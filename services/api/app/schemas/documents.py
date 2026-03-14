@@ -33,6 +33,29 @@ class DocumentListResponse(BaseModel):
     documents: list[DocumentResponse]
 
 
+class SourceSummaryResponse(BaseModel):
+    source_type: str
+    source_name: str
+    document_count: int
+    indexed_count: int
+    latest_updated_at: datetime | None
+    document_kinds: list[str]
+
+
+class SourceListResponse(BaseModel):
+    sources: list[SourceSummaryResponse]
+
+
+class SourceDetailResponse(BaseModel):
+    source_type: str
+    source_name: str
+    document_count: int
+    indexed_count: int
+    latest_updated_at: datetime | None
+    document_kinds: list[str]
+    documents: list[DocumentResponse]
+
+
 class IngestSourceRequest(BaseModel):
     profile_id: str | None = None
     source_type: str | None = None
@@ -63,3 +86,29 @@ class IngestionJobResponse(BaseModel):
     updated_at: datetime
     started_at: datetime | None
     completed_at: datetime | None
+
+
+class PageAnswerRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=4_000)
+    mode: str = "hybrid"
+
+
+class SupportingPassageResponse(BaseModel):
+    label: str
+    document_id: UUID
+    document_slug: str | None = None
+    title: str
+    section_title: str | None = None
+    excerpt: str
+    source_type: str
+    path_or_url: str | None = None
+    score: float
+
+
+class PageAnswerResponse(BaseModel):
+    answer: str
+    scope_used: str
+    citations: list[dict[str, str]]
+    supporting_passages: list[SupportingPassageResponse]
+    provider_name: str
+    model_name: str

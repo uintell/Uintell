@@ -1,10 +1,10 @@
 "use client";
 
-import type { AdminStats, CollectionRecord, DocumentRecord, IngestionJob, NoteRecord, SourceProfile } from "@uintell/shared/contracts";
+import type { DocumentRecord, IngestionJob, SourceSummary } from "@uintell/shared/contracts";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { api, readSourceProfiles } from "@/lib/api";
+import { api } from "@/lib/api";
 
 function formatTimestamp(value: string | null | undefined): string {
   if (!value) {
@@ -14,12 +14,9 @@ function formatTimestamp(value: string | null | undefined): string {
 }
 
 export function DashboardWorkspace() {
+  const [sources, setSources] = useState<SourceSummary[]>([]);
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
-  const [notes, setNotes] = useState<NoteRecord[]>([]);
-  const [collections, setCollections] = useState<CollectionRecord[]>([]);
   const [jobs, setJobs] = useState<IngestionJob[]>([]);
-  const [stats, setStats] = useState<AdminStats>({ documents_by_source: [], documents_by_indexing_status: [] });
-  const [profiles, setProfiles] = useState<SourceProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,35 +26,34 @@ export function DashboardWorkspace() {
     async function loadData() {
       setLoading(true);
       setError(null);
-      try {
-        const [documentsResponse, notesResponse, collectionsResponse, jobsResponse, statsResponse, settingsResponse] = await Promise.all([
-          api.listDocuments({ limit: 6 }),
-          api.listNotes(),
-          api.listCollections(),
-          api.listJobs(),
-          api.stats(),
-          api.getSettings(),
-        ]);
 
-        if (!active) {
-          return;
-        }
+      const [sourcesResult, documentsResult, jobsResult] = await Promise.allSettled([
+        api.listSources({ limit: 8 }),
+        api.listDocuments({ limit: 6 }),
+        api.listJobs(),
+      ]);
 
-        setDocuments(documentsResponse.documents);
-        setNotes(notesResponse);
-        setCollections(collectionsResponse);
-        setJobs(jobsResponse.slice(0, 6));
-        setStats(statsResponse);
-        setProfiles(readSourceProfiles(settingsResponse.values));
-      } catch (err) {
-        if (active) {
-          setError(err instanceof Error ? err.message : "Failed to load dashboard");
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
+      if (!active) {
+        return;
       }
+
+      if (sourcesResult.status === "fulfilled") {
+        setSources(sourcesResult.value.sources);
+      }
+
+      if (documentsResult.status === "fulfilled") {
+        setDocuments(documentsResult.value.documents);
+      } else {
+        setError(documentsResult.reason instanceof Error ? documentsResult.reason.message : "Failed to load dashboard");
+      }
+
+      if (jobsResult.status === "fulfilled") {
+        setJobs(jobsResult.value.slice(0, 5));
+      } else {
+        setJobs([]);
+      }
+
+      setLoading(false);
     }
 
     void loadData();
@@ -68,116 +64,129 @@ export function DashboardWorkspace() {
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <div className="text-xs uppercase tracking-[0.22em] text-[#5faa73]">Knowledge workspace</div>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#7df2a6]">Private knowledge engine, locally controlled.</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-[#66c485]">
-            Browse ingested documents, curate knowledge pages and collections, run hybrid search, and control source imports from one
-            place.
+      <header className="border border-[#12311d] bg-[#050b08] p-6 lg:p-8">
+        <div className="max-w-4xl">
+          <div className="text-xs uppercase tracking-[0.22em] text-[#5faa73]">Reader-first knowledge system</div>
+          <h1 className="mt-4 text-4xl font-semibold tracking-tight text-[#7df2a6]">
+            Import sources, read comfortably, ask grounded questions, follow the evidence.
+          </h1>
+          <p className="mt-4 text-sm leading-8 text-[#66c485]">
+            Uintell is focused on one workflow: bring in offline knowledge sources, browse them like a serious technical
+            library, open a page, and ask page-scoped AI questions with visible citations.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <Link href="/app/search" className="rounded-full bg-[#4d8dff] px-5 py-2 text-sm font-medium text-[#020704] transition hover:bg-[#7aaaff]">
-            Search knowledge
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link href="/app/library" className="rounded-full bg-[#4d8dff] px-5 py-2 text-sm font-medium text-[#020704] transition hover:bg-[#7aaaff]">
+            Open library
           </Link>
-          <Link href="/app/admin" className="rounded-full border border-[#12311d] px-5 py-2 text-sm text-[#4d8dff] transition hover:border-[#4d8dff] hover:text-[#7aaaff]">
-            Manage imports
+          <Link href="/app/search" className="rounded-full border border-[#12311d] px-5 py-2 text-sm text-[#4d8dff] transition hover:border-[#4d8dff] hover:text-[#7aaaff]">
+            Search sources
+          </Link>
+          <Link href="/app/imports" className="rounded-full border border-[#12311d] px-5 py-2 text-sm text-[#4d8dff] transition hover:border-[#4d8dff] hover:text-[#7aaaff]">
+            Import source
           </Link>
         </div>
       </header>
 
       {error ? <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">{error}</div> : null}
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-3">
         {[
-          { label: "Documents", value: documents.length, detail: `${stats.documents_by_source.length} source groups` },
-          { label: "Pages", value: notes.length, detail: "Knowledge pages linked to your corpus" },
-          { label: "Collections", value: collections.length, detail: "Curated reading sets and research bundles" },
-          { label: "Import profiles", value: profiles.length, detail: `${profiles.filter((profile) => profile.enabled).length} enabled by default` },
+          { label: "Sources", value: sources.length, detail: "Named corpora you can browse and ingest" },
+          { label: "Recent documents", value: documents.length, detail: "Reader-ready pages available right now" },
+          { label: "Recent jobs", value: jobs.length, detail: "Import activity visible without a heavy admin shell" },
         ].map((item) => (
           <div key={item.label} className="border border-[#12311d] bg-[#08110d] p-5">
             <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">{item.label}</div>
-            <div className="mt-4 text-3xl font-semibold text-[#7df2a6]">{loading ? "..." : item.value}</div>
+            <div className="mt-3 text-3xl font-semibold text-[#7df2a6]">{loading ? "..." : item.value}</div>
             <div className="mt-2 text-sm text-[#66c485]">{item.detail}</div>
           </div>
         ))}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-        <div className="space-y-6">
-          <div className="border border-[#12311d] bg-[#050b08] p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Recent documents</div>
-                <h2 className="mt-2 text-2xl font-semibold text-[#7df2a6]">Reader-ready documents</h2>
-              </div>
-              <Link href="/app/library" className="rounded-full border border-[#12311d] px-4 py-2 text-sm text-[#4d8dff] transition hover:border-[#4d8dff] hover:text-[#7aaaff]">
-                Open library
-              </Link>
+      <section className="grid gap-6 xl:grid-cols-[1.05fr_1.2fr]">
+        <div className="border border-[#12311d] bg-[#050b08] p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Sources</div>
+              <h2 className="mt-2 text-2xl font-semibold text-[#7df2a6]">Knowledge collections</h2>
             </div>
-
-            <div className="mt-5 grid gap-4">
-              {!loading && documents.length === 0 ? (
-                <div className="border border-dashed border-[#12311d] p-5 text-sm text-[#5faa73]">No documents indexed yet.</div>
-              ) : null}
-
-              {documents.map((document) => (
-                <article key={document.id} className="border border-[#12311d] bg-[#08110d] p-5">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#5faa73]">{document.source_type}</span>
-                    <span className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#4d8dff]">{document.document_kind ?? "document"}</span>
-                  </div>
-                  <h3 className="mt-4 text-xl font-medium text-[#7df2a6]">
-                    {document.slug ? <Link href={`/app/library/${document.slug}`} className="transition hover:text-[#7aaaff]">{document.title}</Link> : document.title}
-                  </h3>
-                  {document.summary ? <p className="mt-3 text-sm leading-7 text-[#66c485]">{document.summary}</p> : null}
-                  {document.tags.length ? (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {document.tags.slice(0, 4).map((tag) => (
-                        <span key={tag} className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#5faa73]">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                </article>
-              ))}
-            </div>
+            <Link href="/app/library" className="rounded-full border border-[#12311d] px-4 py-2 text-sm text-[#4d8dff] transition hover:border-[#4d8dff] hover:text-[#7aaaff]">
+              View library
+            </Link>
           </div>
 
-          <div className="border border-[#12311d] bg-[#050b08] p-5">
-            <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Source coverage</div>
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              {stats.documents_by_source.map((item) => (
-                <div key={item.source_type} className="border border-[#12311d] bg-[#08110d] p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">{item.source_type}</div>
-                  <div className="mt-3 text-2xl font-semibold text-[#7df2a6]">{item.count}</div>
+          <div className="mt-5 space-y-3">
+            {!loading && sources.length === 0 ? (
+              <div className="border border-dashed border-[#12311d] p-5 text-sm text-[#5faa73]">No sources indexed yet. Start with a local docs folder or wiki import.</div>
+            ) : null}
+
+            {sources.map((source) => (
+              <Link
+                key={`${source.source_type}:${source.source_name}`}
+                href={`/app/library/source/${encodeURIComponent(source.source_type)}/${encodeURIComponent(source.source_name)}`}
+                className="block border border-[#12311d] bg-[#08110d] p-4 transition hover:border-[#4d8dff]"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-medium text-[#7df2a6]">{source.source_name}</div>
+                    <div className="mt-1 text-xs uppercase tracking-[0.18em] text-[#5faa73]">{source.source_type}</div>
+                  </div>
+                  <div className="text-right text-xs text-[#66c485]">
+                    <div>{source.document_count} documents</div>
+                    <div>{source.indexed_count} indexed</div>
+                  </div>
                 </div>
-              ))}
-              {stats.documents_by_source.length === 0 && !loading ? (
-                <div className="border border-dashed border-[#12311d] p-4 text-sm text-[#5faa73]">Import a source profile to populate the corpus.</div>
-              ) : null}
-            </div>
+                {source.document_kinds.length ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {source.document_kinds.slice(0, 3).map((kind) => (
+                      <span key={kind} className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#5faa73]">
+                        {kind}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </Link>
+            ))}
           </div>
         </div>
 
         <div className="space-y-6">
           <div className="border border-[#12311d] bg-[#050b08] p-5">
-            <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Import profiles</div>
-            <h2 className="mt-2 text-2xl font-semibold text-[#7df2a6]">Configured sources</h2>
-            <div className="mt-5 space-y-3">
-              {profiles.slice(0, 5).map((profile) => (
-                <article key={profile.id} className="border border-[#12311d] bg-[#08110d] p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-medium text-[#7df2a6]">{profile.label}</div>
-                      <div className="mt-1 text-xs text-[#5faa73]">{profile.target_path}</div>
-                    </div>
-                    <div className={`rounded-full border px-3 py-1 text-xs ${profile.enabled ? "border-[#4d8dff]/40 text-[#4d8dff]" : "border-[#12311d] text-[#5faa73]"}`}>
-                      {profile.enabled ? "Enabled" : "Disabled"}
-                    </div>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Recent reading</div>
+                <h2 className="mt-2 text-2xl font-semibold text-[#7df2a6]">Open a page and ask about it</h2>
+              </div>
+              <Link href="/app/library" className="rounded-full border border-[#12311d] px-4 py-2 text-sm text-[#4d8dff] transition hover:border-[#4d8dff] hover:text-[#7aaaff]">
+                Browse pages
+              </Link>
+            </div>
+
+            <div className="mt-5 grid gap-4">
+              {!loading && documents.length === 0 ? (
+                <div className="border border-dashed border-[#12311d] p-5 text-sm text-[#5faa73]">No reader pages are available yet.</div>
+              ) : null}
+
+              {documents.map((document) => (
+                <article key={document.id} className="border border-[#12311d] bg-[#08110d] p-5">
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#5faa73]">{document.source_type}</span>
+                    {document.document_kind ? (
+                      <span className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#4d8dff]">{document.document_kind}</span>
+                    ) : null}
+                    <span className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#66c485]">{document.source_name}</span>
                   </div>
+                  <h3 className="mt-4 text-xl font-medium text-[#7df2a6]">
+                    {document.slug ? (
+                      <Link href={`/app/library/${document.slug}`} className="transition hover:text-[#7aaaff]">
+                        {document.title}
+                      </Link>
+                    ) : (
+                      document.title
+                    )}
+                  </h3>
+                  {document.summary ? <p className="mt-3 text-sm leading-7 text-[#66c485]">{document.summary}</p> : null}
                 </article>
               ))}
             </div>
@@ -186,16 +195,18 @@ export function DashboardWorkspace() {
           <div className="border border-[#12311d] bg-[#050b08] p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Recent jobs</div>
-                <h2 className="mt-2 text-2xl font-semibold text-[#7df2a6]">Ingestion activity</h2>
+                <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Import status</div>
+                <h2 className="mt-2 text-2xl font-semibold text-[#7df2a6]">Recent ingestion activity</h2>
               </div>
-              <Link href="/app/admin" className="rounded-full border border-[#12311d] px-4 py-2 text-sm text-[#4d8dff] transition hover:border-[#4d8dff] hover:text-[#7aaaff]">
-                View admin
+              <Link href="/app/imports" className="rounded-full border border-[#12311d] px-4 py-2 text-sm text-[#4d8dff] transition hover:border-[#4d8dff] hover:text-[#7aaaff]">
+                Open imports
               </Link>
             </div>
             <div className="mt-5 space-y-3">
-              {!loading && jobs.length === 0 ? (
-                <div className="border border-dashed border-[#12311d] p-4 text-sm text-[#5faa73]">No jobs yet.</div>
+              {jobs.length === 0 ? (
+                <div className="border border-dashed border-[#12311d] p-4 text-sm text-[#5faa73]">
+                  {loading ? "Loading activity..." : "Import activity will appear here once jobs run."}
+                </div>
               ) : null}
               {jobs.map((job) => (
                 <article key={job.id} className="border border-[#12311d] bg-[#08110d] p-4">

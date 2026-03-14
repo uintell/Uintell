@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,20 +19,20 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/uintell"
-    redis_url: str = "redis://localhost:6379/0"
+    redis_url: str | None = None
     qdrant_url: str = "http://localhost:6333"
     qdrant_collection: str = "knowledge_chunks"
     qdrant_api_key: str | None = None
-    meilisearch_url: str = "http://localhost:7700"
+    meilisearch_url: str | None = None
     meilisearch_api_key: str | None = None
     meilisearch_index: str = "documents"
 
-    temporal_host: str = "localhost:7233"
+    temporal_host: str | None = None
     temporal_namespace: str = "default"
     temporal_task_queue: str = "knowledge-ingestion"
 
     file_storage_backend: str = "local"
-    local_storage_root: Path = Path("/workspace/var/storage")
+    local_storage_root: Path = Path("/data/uintell/storage")
     s3_bucket: str | None = None
     s3_region: str | None = None
     s3_endpoint_url: str | None = None
@@ -52,9 +52,9 @@ class Settings(BaseSettings):
     openai_temperature: float = 0.2
     openai_max_output_tokens: int = 900
 
-    generation_provider: str = "ollama"
-    embedding_provider: str = "ollama"
-    enable_openai_generation: bool = True
+    generation_provider: str = "deterministic"
+    embedding_provider: str = "hash"
+    enable_openai_generation: bool = False
     enable_tool_calling: bool = True
     system_prompt: str = (
         "You are United Intelligence, a technical AI assistant grounded in verified offline sources. "
@@ -76,8 +76,8 @@ class Settings(BaseSettings):
     rag_context_char_limit: int = 12_000
     retrieval_fusion_limit: int = 12
 
-    archwiki_root: Path = Path("/usr/share/doc/arch-wiki/html/en")
-    wikipedia_dump_path: Path = Path("/workspace/enwiki-latest-pages-articles-multistream.xml.bz2")
+    archwiki_root: Path = Path("/data/uintell/imports/archwiki/html")
+    wikipedia_dump_path: Path = Path("/data/uintell/imports/wikipedia/enwiki-latest-pages-articles-multistream.xml.bz2")
     local_docs_root: Path = Path("/workspace/data/local-docs")
 
     otlp_endpoint: str | None = None
@@ -85,6 +85,28 @@ class Settings(BaseSettings):
 
     seed_admin_email: str = "admin@uintell.org"
     seed_admin_password: str = "ChangeMeNow123!"
+
+    @field_validator(
+        "redis_url",
+        "qdrant_api_key",
+        "meilisearch_url",
+        "meilisearch_api_key",
+        "temporal_host",
+        "openai_api_key",
+        "openai_base_url",
+        "otlp_endpoint",
+        "s3_bucket",
+        "s3_region",
+        "s3_endpoint_url",
+        "s3_access_key_id",
+        "s3_secret_access_key",
+        mode="before",
+    )
+    @classmethod
+    def _empty_string_to_none(cls, value: str | None) -> str | None:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     @property
     def cors_origin_list(self) -> list[str]:

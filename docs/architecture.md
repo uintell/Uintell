@@ -1,110 +1,109 @@
 # Architecture
 
-## Decision summary
+## Product-Centered Summary
 
-The repo is being adapted rather than replaced. The live Rust stack stays in place while a clean Python/Next monorepo is added beside it. That avoids destructive migration pressure and makes it possible to validate the new product surface locally before any deployment cutover.
+Uintell is being simplified around one primary vertical slice:
 
-## Major components
+`import source -> browse source -> read page -> ask page -> cited answer`
+
+The active architecture is the Python/Next stack. Legacy Rust and legacy frontend code remain frozen for migration/reference only.
+
+## Active Product Stack
 
 ### `apps/web`
 
-- Next.js App Router
-- strict TypeScript
-- Tailwind styling
-- authenticated shell
-- streaming chat UI
-- retrieval/search UI
-- library/settings/admin views
+Primary reader-first frontend built with:
 
-The frontend talks directly to the FastAPI backend and relies on secure, `HttpOnly` session cookies with `credentials: include`.
+- Next.js App Router
+- TypeScript
+- Tailwind
+
+Primary pages:
+
+- home
+- library
+- source detail
+- article reader
+- search
+- imports
+- settings
 
 ### `services/api`
 
+Primary API built with:
+
 - FastAPI
 - SQLAlchemy async ORM
-- Alembic migrations
-- Redis-backed rate limiting
-- Qdrant-backed semantic retrieval
-- OpenTelemetry hooks
-- structured JSON logs
+- Pydantic
+- PostgreSQL-backed normalized knowledge model
 
 The API owns:
 
-- auth/session validation
-- conversation storage
-- chat orchestration
-- retrieval/search
-- upload intake
-- ingestion job creation
-- admin/stat endpoints
-- settings persistence
-
-### `services/worker`
-
-- Temporal worker
-- thin workflows
-- activity-driven ingestion execution
-
-The worker deliberately reuses the API package’s data model and ingestion services instead of duplicating indexing logic.
+- source import/job creation
+- document and source metadata
+- retrieval
+- page-scoped grounded answers
+- authentication/session handling
 
 ### `packages/ai`
 
-Shared Python package containing:
+Shared parsing and retrieval helpers for:
 
-- Arch Wiki parsing
-- Wikipedia dump parsing
-- filesystem document parsing
+- filesystem docs
+- wiki imports
 - chunking
-- embeddings abstraction
-- RAG prompt assembly
+- citation bundle construction
+- provider prompt assembly
 
-### `packages/shared`
+## Data Model
 
-TypeScript contracts shared by the frontend so the API payload shapes remain explicit and centralized.
+The product is centered on normalized knowledge objects, not on a wiki CMS abstraction:
 
-## Retrieval architecture
+- sources
+- documents/pages
+- sections
+- chunks
+- citations
+- relationships
+- ingestion jobs
 
-Retrieval is hybrid by construction:
+PostgreSQL is the source of truth for these objects.
 
-1. Embed the query.
-2. Search Qdrant semantically.
-3. Search PostgreSQL full-text on chunk text.
-4. Merge ranks with reciprocal rank fusion.
-5. Load authoritative chunk payloads from PostgreSQL.
-6. Build citations and context blocks for answer synthesis.
+## Retrieval Model
 
-This avoids overfitting the platform to a single retrieval primitive and keeps the source of truth in PostgreSQL.
+Default retrieval path:
 
-## Ingestion architecture
+1. PostgreSQL exact search on chunk text
+2. Qdrant semantic search
+3. merge and filter results
+4. return authoritative chunk/document payloads from PostgreSQL
 
-All sources normalize into the same document and chunk model.
+Meilisearch is optional and should not be treated as a required default.
 
-Flow:
+## Answering Model
 
-1. Create ingestion job.
-2. Temporal workflow executes `run_ingestion_job`.
-3. Source parser yields normalized documents.
-4. Documents are deduplicated by `(source_name, canonical_id)` and `sha256`.
-5. Chunks replace prior chunk rows for changed documents.
-6. Chunk vectors are upserted into Qdrant.
-7. Job progress is stored in PostgreSQL.
+Reader answers should be page-scoped first:
 
-## AI provider boundary
+1. retrieve from the current page
+2. widen to the current source only if needed
+3. generate an answer from retrieved evidence
+4. return citations and supporting passages explicitly
 
-The LLM provider is isolated behind `LLMProvider`.
+## Jobs
 
-Current providers:
+Default local ingestion can run directly from the API process.
 
-- `OpenAIResponsesProvider`
-- `DeterministicRagProvider`
+Temporal worker flow remains available as an optional advanced path for more durable ingestion, but it is not required for the main local developer flow.
 
-This is the main extensibility seam for later vLLM/Ollama/local-model support.
+## Optional Components
 
-## Production hardening still needed
+Optional, not required by default:
 
-- stronger CSRF protection for cookie auth
-- pinned Temporal image tags
-- more granular authz and admin RBAC
-- secret management beyond env files
-- retry/failure DLQ visibility in a dedicated admin view
-- frontend telemetry export wiring
+- Redis
+- Meilisearch
+- Temporal
+- worker
+- Ollama
+- OpenAI
+
+The default local path should stay usable with the smallest set of services that still supports the main product flow.

@@ -77,11 +77,11 @@ export function AdminWorkspace() {
     <div className="space-y-6">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="text-xs uppercase tracking-[0.2em] text-muted">Admin visibility</div>
-          <h1 className="mt-3 text-3xl font-semibold">Import dashboard and indexing control</h1>
+          <div className="text-xs uppercase tracking-[0.2em] text-muted">Imports</div>
+          <h1 className="mt-3 text-3xl font-semibold">Ingest offline sources and watch status</h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-200">
-            Register local paths, map them to source kinds, and launch ingestion jobs without hardcoding repository dump
-            files.
+            Register local paths, map them to normalized source kinds, and launch ingestion jobs without turning the
+            app into a generic admin console.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -137,8 +137,8 @@ export function AdminWorkspace() {
       <section className="rounded-3xl border border-line bg-black/20 p-5">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <div className="text-xs uppercase tracking-[0.18em] text-muted">Import sources</div>
-            <h2 className="mt-2 text-2xl font-semibold text-white">Registered paths and source rules</h2>
+            <div className="text-xs uppercase tracking-[0.18em] text-muted">Source registry</div>
+            <h2 className="mt-2 text-2xl font-semibold text-white">Registered paths and normalization rules</h2>
           </div>
           <div className="text-sm text-muted">{status}</div>
         </div>

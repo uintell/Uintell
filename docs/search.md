@@ -1,27 +1,47 @@
 # Search
 
-## Retrieval stack
+## Product Intent
 
-The product now uses a split search stack:
+Search is a first-class reader feature, not a demo for retrieval infrastructure.
 
-- Meilisearch for full-text document indexing
-- Qdrant for semantic chunk retrieval
-- PostgreSQL as the system of record for document and chunk payloads
+The search experience should help users:
 
-## Search modes
+- find the right source
+- find the right page
+- jump into the reader quickly
+- trust why a result appeared
 
-- `exact`: keyword-first retrieval
-- `semantic`: embedding-first retrieval
-- `hybrid`: reciprocal-rank fusion across semantic and keyword results
+## Default Retrieval Stack
 
-The search page exposes this mode switch directly.
+Default search uses:
 
-## Filters
+- PostgreSQL exact/full-text search
+- Qdrant semantic retrieval
 
-The current product slice supports:
+Meilisearch is optional and should be treated as an accelerator, not a required default dependency.
 
-- source filtering
-- tag filtering
-- library sorting
+## Search Modes
 
-Document browsing uses lightweight document-level filters. The reader flow uses the full document detail endpoint with backlinks and related documents resolved on the API side.
+- `exact`: keyword-heavy retrieval
+- `semantic`: vector-heavy retrieval
+- `hybrid`: merged exact + semantic results
+
+## Search Result Requirements
+
+Results should show:
+
+- page title
+- source label
+- section label where available
+- readable snippet
+- path into the reader
+
+The UI should prefer readability and confident navigation over excessive controls.
+
+## Reader Connection
+
+Search is not the end state.
+
+The product path continues:
+
+`search -> open page -> ask this page -> inspect citations`

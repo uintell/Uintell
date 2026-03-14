@@ -9,7 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import get_container, get_db, require_user
 from app.repositories.admin import AdminRepository
 from app.repositories.documents import DocumentRepository
-from app.schemas.documents import DocumentListResponse, DocumentResponse, UploadResponse
+from app.schemas.documents import (
+    DocumentListResponse,
+    DocumentResponse,
+    PageAnswerRequest,
+    PageAnswerResponse,
+    SourceDetailResponse,
+    SourceListResponse,
+    SourceSummaryResponse,
+    SupportingPassageResponse,
+    UploadResponse,
+)
 from app.schemas.knowledge import (
     DocumentConnectionsResponse,
     DocumentDetailResponse,
@@ -25,6 +35,7 @@ router = APIRouter(prefix="/v1/documents", tags=["documents"])
 async def list_documents(
     query: str | None = None,
     source_type: str | None = None,
+    source_name: str | None = None,
     source_types: list[str] | None = Query(default=None),
     document_kind: str | None = None,
     tag: str | None = None,
@@ -37,6 +48,7 @@ async def list_documents(
         db,
         query=query,
         source_type=source_type,
+        source_name=source_name,
         source_types=source_types,
         document_kind=document_kind,
         tag=tag,
@@ -44,30 +56,67 @@ async def list_documents(
         limit=limit,
     )
     return DocumentListResponse(
-        documents=[
-            DocumentResponse(
-                id=document.id,
-                source_type=document.source_type,
-                source_name=document.source_name,
-                source_identifier=document.source_identifier,
-                canonical_id=document.canonical_id,
-                title=document.title,
-                slug=document.slug,
-                summary=document.summary,
-                tags=list(document.tags_json or []),
-                path_or_url=document.path_or_url,
-                language=document.language,
-                status=document.status,
-                indexing_status=document.indexing_status,
-                embedding_status=document.embedding_status,
-                document_kind=document.document_kind,
-                metadata=document.metadata_json,
-                created_at=document.created_at,
-                updated_at=document.updated_at,
-                last_indexed_at=document.last_indexed_at,
+        documents=[_serialize_document(document) for document in documents]
+    )
+
+
+@router.get("/sources", response_model=SourceListResponse)
+async def list_sources(
+    query: str | None = None,
+    source_type: str | None = None,
+    limit: int = 60,
+    user=Depends(require_user),
+    db: AsyncSession = Depends(get_db),
+) -> SourceListResponse:
+    sources = await DocumentRepository().list_sources(
+        db,
+        query=query,
+        source_type=source_type,
+        limit=limit,
+    )
+    return SourceListResponse(
+        sources=[
+            SourceSummaryResponse(
+                source_type=item["source_type"],
+                source_name=item["source_name"],
+                document_count=item["document_count"],
+                indexed_count=item["indexed_count"],
+                latest_updated_at=item["latest_updated_at"],
+                document_kinds=list(item["document_kinds"]),
             )
-            for document in documents
+            for item in sources
         ]
+    )
+
+
+@router.get("/sources/{source_type}/{source_name}", response_model=SourceDetailResponse)
+async def get_source_detail(
+    source_type: str,
+    source_name: str,
+    user=Depends(require_user),
+    db: AsyncSession = Depends(get_db),
+) -> SourceDetailResponse:
+    repository = DocumentRepository()
+    sources = await repository.list_sources(db, source_type=source_type, limit=500)
+    source = next((item for item in sources if item["source_name"] == source_name), None)
+    if source is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
+
+    documents = await repository.list_documents(
+        db,
+        source_type=source_type,
+        source_name=source_name,
+        sort="updated_desc",
+        limit=200,
+    )
+    return SourceDetailResponse(
+        source_type=source["source_type"],
+        source_name=source["source_name"],
+        document_count=source["document_count"],
+        indexed_count=source["indexed_count"],
+        latest_updated_at=source["latest_updated_at"],
+        document_kinds=list(source["document_kinds"]),
+        documents=[_serialize_document(document) for document in documents],
     )
 
 
@@ -81,6 +130,46 @@ async def get_document_connections(
     if document is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     return await _build_connections(db, document)
+
+
+@router.post("/{document_id}/answer", response_model=PageAnswerResponse)
+async def answer_about_document(
+    document_id: UUID,
+    payload: PageAnswerRequest,
+    user=Depends(require_user),
+    db: AsyncSession = Depends(get_db),
+    container: ServiceContainer = Depends(get_container),
+) -> PageAnswerResponse:
+    try:
+        answer = await container.answers.answer_document_question(
+            db,
+            document_id=document_id,
+            question=payload.question,
+            mode=payload.mode,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return PageAnswerResponse(
+        answer=answer.text,
+        scope_used=answer.scope_used,
+        citations=answer.citations,
+        supporting_passages=[
+            SupportingPassageResponse(
+                label=passage.label,
+                document_id=UUID(passage.document_id),
+                document_slug=passage.document_slug,
+                title=passage.title,
+                section_title=passage.section_title,
+                excerpt=passage.excerpt,
+                source_type=passage.source_type,
+                path_or_url=passage.path_or_url,
+                score=passage.score,
+            )
+            for passage in answer.passages
+        ],
+        provider_name=answer.provider_name,
+        model_name=answer.model_name,
+    )
 
 
 @router.get("/{document_id}", response_model=DocumentDetailResponse)
@@ -185,6 +274,30 @@ async def _build_detail(db: AsyncSession, document) -> DocumentDetailResponse:
         metadata=document.metadata_json,
         backlinks=connections.backlinks,
         related_documents=connections.related_documents,
+        created_at=document.created_at,
+        updated_at=document.updated_at,
+        last_indexed_at=document.last_indexed_at,
+    )
+
+
+def _serialize_document(document) -> DocumentResponse:
+    return DocumentResponse(
+        id=document.id,
+        source_type=document.source_type,
+        source_name=document.source_name,
+        source_identifier=document.source_identifier,
+        canonical_id=document.canonical_id,
+        title=document.title,
+        slug=document.slug,
+        summary=document.summary,
+        tags=list(document.tags_json or []),
+        path_or_url=document.path_or_url,
+        language=document.language,
+        status=document.status,
+        indexing_status=document.indexing_status,
+        embedding_status=document.embedding_status,
+        document_kind=document.document_kind,
+        metadata=document.metadata_json,
         created_at=document.created_at,
         updated_at=document.updated_at,
         last_indexed_at=document.last_indexed_at,

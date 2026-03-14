@@ -1,25 +1,121 @@
 # Progress
 
-- [x] Inspect current repo and choose adaptation strategy instead of destructive replacement
-- [x] Scaffold new monorepo structure: `apps/web`, `services/api`, `services/worker`, `packages/ai`, `packages/shared`
-- [x] Implement shared offline ingestion and RAG helpers
-- [x] Implement FastAPI backend with auth, chat, retrieval, uploads, admin, settings, and health routes
-- [x] Implement Alembic schema and seed bootstrap
-- [x] Implement Temporal worker and ingestion workflows
-- [x] Implement Next.js frontend with landing page, login, chat, search, library, settings, and admin
-- [x] Add Dockerfiles, Docker Compose, env templates, and Make targets
-- [x] Run the new stack end-to-end and capture verification notes
-- [ ] Add deeper integration tests beyond current parser/security/workflow smoke coverage
+## Product Focus
+
+Uintell is being narrowed to one primary product:
+
+`import source -> browse source -> read page -> ask page -> cited answer`
+
+The product is not being positioned as a generic AI platform. The core value is a serious reader-first knowledge system for offline corpora such as wiki imports, books, notes, and technical docs.
+
+## Chosen Default Stack
+
+- Frontend: Next.js App Router + TypeScript + Tailwind + shadcn/ui
+- Backend: FastAPI + Pydantic + PostgreSQL
+- Retrieval: PostgreSQL exact search + Qdrant vectors
+- Jobs by default: API-managed background ingestion
+- Optional jobs for advanced/local durability: Temporal worker
+- Models by default: deterministic grounded answers
+- Optional model paths: Ollama or OpenAI
+
+## Frozen Or Deprecated Areas
+
+These paths are frozen except for migration support, compatibility, or critical fixes:
+
+- `apps/backend`
+- `apps/frontend`
+- `legacy/uintell-site`
+
+These surfaces are no longer treated as the primary product:
+
+- generic chat-first workspace flows
+- collections as a first-class product surface
+- notes/pages as a competing product line
+- multi-architecture README positioning
+
+## Minimal Required Local Services
+
+The default local path should require only:
+
+- PostgreSQL
+- Qdrant
+- API
+- Web
+
+These should be optional for advanced setups, not required for the main product loop:
+
+- Redis
+- Meilisearch
+- Temporal
+- Temporal UI
+- Worker
+- Ollama
+
+## Cleanup Goals
+
+- [x] Freeze legacy stack in docs and navigation
+- [x] Separate repo code from datasets, indexes, caches, and mutable runtime state
+- [x] Move default runtime/data locations outside the repo root by default
+- [x] Reduce default local startup to the main vertical slice only
+- [x] Rewrite top-level docs around one product story
+- [x] Remove default-secret guidance from primary docs
+
+## Primary Vertical Slice
+
+### A. Import Source
+
+- user registers or points to a local source path
+- ingestion starts
+- status is visible
+
+### B. Browse Source
+
+- source list
+- source detail
+- document list per source
+
+### C. Read Page
+
+- article layout
+- metadata
+- table of contents
+- related pages
+
+### D. Ask This Page
+
+- page-scoped question box
+- retrieve from current page first
+- widen to current source only if needed
+- answer with explicit citations and supporting passages
+
+### E. Continue Reading
+
+- related pages
+- backlinks where available
+- source navigation
+
+## UX Milestones
+
+- [x] Home page tells one focused story
+- [x] Library page emphasizes sources and documents, not generic workspace cards
+- [x] Source detail page exists and is useful
+- [x] Reader page includes ask-page AI and evidence
+- [ ] Search is fast, readable, and citation-oriented
+- [x] Ingestion status is visible without turning the app into an admin dashboard
+
+## Implementation Milestones
+
+- [x] Inspect repo structure and identify active stack, legacy stack, and runtime clutter
+- [x] Rewrite README around the focused product identity
+- [x] Add documentation for runtime/data separation and local development defaults
+- [x] Simplify compose/config defaults for the primary local path
+- [x] Add source-summary APIs
+- [x] Add page-scoped answer API with citations and supporting passages
+- [x] Refine frontend pages around library, source detail, reader, and ingestion status
+- [x] Verify the reduced default stack and focused UI flow at build/config level
 
 ## Verification Notes
 
-- `docker compose up` stack verified with `postgres`, `redis`, `qdrant`, `temporal`, `temporal-ui`, `api`, `worker`, and `web`
-- Alembic migrations applied successfully against PostgreSQL
-- Seed bootstrap verified with default admin login at `admin@uintell.org`
-- Filesystem ingestion verified end to end through the public admin API and Temporal worker
-- Retrieval verified through `POST /v1/retrieval/search`
-- Chat verified through both `POST /v1/chat` and `POST /v1/chat/stream`
-- Frontend production build verified with `npm --workspace apps/web run build`
-- Backend unit tests verified with `pytest -q`
-- Relevance guardrail added to retrieval: unsupported semantic-only hits are filtered before prompting, so no-evidence answers no longer cite unrelated sources like `ASCII` for unrelated queries such as `GHB`
-- Production cleanup verified for translated ArchWiki pages: Latvian pages were removed from the live index and new answers now follow the user's language
+- `docker compose config --services` now resolves to `postgres`, `qdrant`, `api`, and `web` by default
+- `npm --workspace apps/web run build` passes, including the new source-detail and imports routes
+- `find services/api/app services/worker/worker_app packages/ai/src/knowledge_engine -name '*.py' -print0 | xargs -0 python3 -m py_compile` passes

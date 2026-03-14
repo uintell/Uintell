@@ -114,31 +114,42 @@ class RetrievalService:
         query: str,
         mode: str,
         source_types: Sequence[str] | None,
+        source_names: Sequence[str] | None = None,
+        document_ids: Sequence[str] | None = None,
         tags: Sequence[str] | None,
         limit: int,
     ) -> list[RetrievedChunk]:
         semantic_hits: list[tuple[str, float]] = []
+        semantic_limit = limit * 2
+        if source_names and not document_ids:
+            semantic_limit = limit * 6
         if mode in {"hybrid", "semantic"}:
-            semantic_hits = await self._semantic_search(query=query, limit=limit * 2)
+            semantic_hits = await self._semantic_search(query=query, limit=semantic_limit, document_ids=document_ids)
         semantic_ids = [chunk_id for chunk_id, _ in semantic_hits]
         semantic_scores = {chunk_id: score for chunk_id, score in semantic_hits}
         keyword_document_ids: list[str] = []
         keyword_ids: list[str] = []
         if mode in {"hybrid", "exact"}:
-            keyword_document_ids = (
-                await self._meilisearch.search(query=query, source_types=source_types, limit=limit * 2)
-                if self._meilisearch is not None
-                else []
-            )
+            keyword_document_ids = []
+            if self._meilisearch is not None and not source_names and not document_ids:
+                keyword_document_ids = await self._meilisearch.search(query=query, source_types=source_types, limit=limit * 2)
             keyword_ids = await self._documents.keyword_search(
                 db,
                 query=query,
                 source_types=source_types,
-                document_ids=keyword_document_ids or None,
+                source_names=source_names,
+                document_ids=document_ids or keyword_document_ids or None,
                 limit=limit * 2,
             )
             if not keyword_ids and not keyword_document_ids:
-                keyword_ids = await self._documents.keyword_search(db, query=query, source_types=source_types, limit=limit * 2)
+                keyword_ids = await self._documents.keyword_search(
+                    db,
+                    query=query,
+                    source_types=source_types,
+                    source_names=source_names,
+                    document_ids=document_ids,
+                    limit=limit * 2,
+                )
 
         if mode == "semantic":
             merged_ids = semantic_ids[:limit]
@@ -151,6 +162,8 @@ class RetrievalService:
             db,
             merged_ids,
             source_types=source_types,
+            source_names=source_names,
+            document_ids=document_ids,
             tags=tags,
         )
         return _filter_supported_chunks(
@@ -160,9 +173,28 @@ class RetrievalService:
             semantic_scores=semantic_scores,
         )
 
-    async def _semantic_search(self, *, query: str, limit: int) -> list[tuple[str, float]]:
+    async def _semantic_search(
+        self,
+        *,
+        query: str,
+        limit: int,
+        document_ids: Sequence[str] | None = None,
+    ) -> list[tuple[str, float]]:
         vector = await self._embeddings.embed_query(query)
-        points = await self._qdrant.search(collection_name=self._collection, query_vector=vector, limit=limit)
+        query_filter = None
+        if document_ids:
+            query_filter = qm.Filter(
+                should=[
+                    qm.FieldCondition(key="document_id", match=qm.MatchValue(value=document_id))
+                    for document_id in document_ids
+                ]
+            )
+        points = await self._qdrant.search(
+            collection_name=self._collection,
+            query_vector=vector,
+            limit=limit,
+            query_filter=query_filter,
+        )
         return [(str(point.id), float(getattr(point, "score", 0.0) or 0.0)) for point in points]
 
 

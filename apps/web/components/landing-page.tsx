@@ -3,7 +3,6 @@ import {
   BookOpenText,
   ChevronRight,
   FileClock,
-  LayoutGrid,
   type LucideIcon,
   Menu,
   Search,
@@ -26,18 +25,16 @@ const leftRailSections = [
   {
     title: "Intelligence",
     items: [
-      { href: "/app/chat", label: "Chat" },
       { href: "/app/search", label: "Search" },
       { href: "/app/library", label: "Library" },
-      { href: "/app/collections", label: "Collections" },
+      { href: "/app/imports", label: "Imports" },
     ],
   },
   {
     title: "Operations",
     items: [
-      { href: "/app/notes", label: "Pages" },
       { href: "/app/settings", label: "Settings" },
-      { href: "/app/admin", label: "Admin" },
+      { href: "/app/imports", label: "Ingestion status" },
     ],
   },
 ];
@@ -58,7 +55,7 @@ const contents = [
 const toolLinks = [
   { href: "/app/search", label: "Search documents", icon: Search },
   { href: "/app/library", label: "Browse library", icon: BookOpenText },
-  { href: "/app/collections", label: "Open collections", icon: LayoutGrid },
+  { href: "/app/imports", label: "Import sources", icon: FileClock },
   { href: "/app/settings", label: "Adjust settings", icon: Settings2 },
 ];
 
@@ -68,10 +65,10 @@ const articleCards = [
     eyebrow: "From United Intelligence",
     title: "Intelligence hub",
     body:
-      "Move between live chat, hybrid search, and saved collections from one front page, using the familiar wiki-style structure as the starting point.",
+      "Move between search, library browsing, and source imports from one front page, using the familiar wiki-style structure as the starting point.",
     links: [
-      { href: "/app/chat", label: "Open chat" },
       { href: "/app/search", label: "Run search" },
+      { href: "/app/library", label: "Open library" },
     ],
     icon: Sparkles,
   },
@@ -80,10 +77,10 @@ const articleCards = [
     eyebrow: "Featured knowledge",
     title: "Knowledge base",
     body:
-      "Review ingested sources, knowledge pages, and curated reading paths in a layout designed for dense knowledge browsing and quick scanning.",
+      "Review ingested sources and normalized pages in a layout designed for dense technical reading, scanning, and citation-first navigation.",
     links: [
       { href: "/app/library", label: "Browse library" },
-      { href: "/app/notes", label: "Read pages" },
+      { href: "/app/search", label: "Search sources" },
     ],
     icon: BookOpenText,
   },
@@ -92,10 +89,10 @@ const articleCards = [
     eyebrow: "Workspace tools",
     title: "Operational controls",
     body:
-      "Reach admin controls, ingestion settings, and collection management from the same shell without losing the structure of the main page.",
+      "Reach source imports and ingestion visibility from the same shell without turning the product into a generic admin dashboard.",
     links: [
       { href: "/app/settings", label: "Open settings" },
-      { href: "/app/admin", label: "Admin panel" },
+      { href: "/app/imports", label: "Open imports" },
     ],
     icon: Wrench,
   },
@@ -104,9 +101,9 @@ const articleCards = [
     eyebrow: "Recent activity",
     title: "Current workstreams",
     body:
-      "Use the landing page as a routing layer into current research, saved artifacts, and the areas of the product that are already implemented.",
+      "Use the landing page as a routing layer into current sources, current reading, and the product path that is actively being refined.",
     links: [
-      { href: "/app/collections", label: "View collections" },
+      { href: "/app/library", label: "Browse sources" },
       { href: "/app", label: "Open workspace" },
     ],
     icon: FileClock,

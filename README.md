@@ -1,77 +1,112 @@
-# United Intelligence
+# Uintell
 
-United Intelligence is a local-first knowledge platform for reader-focused documents, notes, books, and wiki imports. The new platform lives alongside the existing Rust/Axum prototype so the legacy deployment path stays intact while the Python/Next stack is evolved into the primary product surface.
+Uintell is an offline-first AI knowledge system for wiki imports, books, notes, and technical documentation.
 
-## Repo layout
+The product is being focused around one primary flow:
+
+`import source -> browse source -> read page -> ask page -> cited answer`
+
+This repo is not being developed as a generic AI platform. The goal is a serious, reader-first knowledge tool with grounded answers and visible evidence.
+
+## Product Scope
+
+The primary user experience is:
+
+1. register or import a local source
+2. wait for ingestion and indexing
+3. browse the source like a library
+4. open a page/article
+5. ask AI about that page
+6. receive a grounded answer with citations
+7. navigate to related pages and supporting passages
+
+## Default Architecture
+
+Default product stack:
+
+- `apps/web`: Next.js App Router frontend
+- `services/api`: FastAPI backend
+- `PostgreSQL`: source of truth for normalized knowledge objects
+- `Qdrant`: vector retrieval
+
+Optional, not required by default:
+
+- Ollama for local generation/embeddings
+- OpenAI for hosted generation/embeddings
+- Temporal worker for durable ingestion workflows
+- Meilisearch for extra document-level search acceleration
+- Redis for distributed rate limiting
+
+The default local path is intentionally smaller than the repo’s historical scaffolding.
+
+## What Is Frozen
+
+These paths are frozen except for migration support, compatibility work, or critical fixes:
+
+- `apps/backend`
+- `apps/frontend`
+- `legacy/uintell-site`
+
+The active product path is the Python/Next stack under:
+
+- `apps/web`
+- `services/api`
+- `services/worker`
+- `packages/ai`
+- `packages/shared`
+
+## Repo Layout
 
 ```text
 .
 ├── apps
-│   ├── web                # Next.js frontend (TypeScript + Tailwind)
-│   ├── backend            # legacy Rust backend kept in place
-│   └── frontend           # legacy Next frontend kept in place
+│   ├── web                # primary Next.js reader/search frontend
+│   ├── backend            # frozen legacy Rust backend
+│   └── frontend           # frozen legacy Next frontend
 ├── services
-│   ├── api                # FastAPI application
-│   └── worker             # Temporal worker for ingestion/indexing
+│   ├── api                # primary FastAPI API
+│   └── worker             # optional Temporal worker
 ├── packages
-│   ├── ai                 # shared parsing/chunking/embedding/RAG helpers
-│   └── shared             # shared TypeScript contracts
-├── infra
-│   └── docker             # Dockerfiles and bootstrap scripts
+│   ├── ai                 # parsing, chunking, retrieval prompt helpers
+│   └── shared             # shared frontend contracts
 ├── docs
-│   ├── architecture.md
-│   ├── deployment.md
-│   ├── progress.md
-│   └── rag_pipeline.md
+├── infra
 ├── data
-│   └── local-docs         # optional extra local documents
-├── docker-compose.yml
-└── Makefile
+│   └── local-docs         # small checked-in demo docs only
+└── legacy
 ```
 
-## What is implemented
+## Code Vs Data
 
-- FastAPI backend with:
-  - auth endpoints and secure session cookies
-  - streaming chat endpoint
-  - retrieval/search endpoint with exact, semantic, and hybrid modes
-  - upload endpoint
-  - document library endpoints
-  - admin ingestion and stats endpoints
-  - settings endpoint
-  - health/readiness endpoints
-- Temporal worker with ingestion workflows for:
-  - Markdown/TXT notes
-  - EPUB/PDF/books and long-form local documents
-  - Wikipedia dumps
-  - Arch Wiki HTML mirrors
-  - uploaded files
-- Offline-first knowledge package with:
-  - Arch Wiki HTML parsing
-  - Wikipedia multistream XML parsing
-  - local document parsing for markdown, HTML, PDF, TXT, and code
-  - chunking and embedding abstractions
-  - deterministic fallback generation
-  - OpenAI-ready provider abstraction
-- Next.js web app with:
-  - landing page
-  - login page
-  - authenticated dashboard
-  - streaming chat UI
-  - hybrid search page
-  - document library and reader pages
-  - notes and collections pages
-  - settings page
-  - admin import dashboard
-- Infra:
-  - Docker Compose for Postgres, Redis, Qdrant, Meilisearch, Ollama, Temporal, Temporal UI, API, worker, and web
-  - Alembic migrations
-  - seed script for default admin bootstrap
-  - env templates and Make targets
+Code should stay in the repo. Large mutable data should not.
 
-## Quick start
+By default:
 
-1. Copy env examples if you want local overrides.
+- runtime storage goes under `/data/uintell/storage`
+- large imports go under `/data/uintell/imports/...`
+- checked-in repo data is limited to small demo material under `data/local-docs`
+
+This repo should not be the default home for:
+
+- Wikipedia dumps
+- extracted tarballs
+- runtime uploads
+- generated indexes
+- caches
+- local virtualenvs
+- large mutable corpora
+
+See:
+
+- [docs/local-development.md](docs/local-development.md)
+- [docs/runtime-data.md](docs/runtime-data.md)
+- [docs/progress.md](docs/progress.md)
+
+## Local Development
+
+### 1. Configure env
+
+Use the service env templates and set your own local values:
 
 ```bash
 cp .env.example .env
@@ -80,86 +115,65 @@ cp services/worker/.env.example services/worker/.env
 cp apps/web/.env.example apps/web/.env.local
 ```
 
-2. Start the stack.
+Do not leave seeded credentials unchanged. Set `SEED_ADMIN_PASSWORD` in your local env before running the seed flow.
+
+### 2. Start the focused default stack
 
 ```bash
-make up
+docker compose up --build
 ```
 
-3. Run migrations and seed the default admin.
+Default services:
+
+- `postgres`
+- `qdrant`
+- `api`
+- `web`
+
+### 3. Optional profiles
+
+Enable only what you actually need:
 
 ```bash
-make migrate
-make seed-admin
+docker compose --profile local-llm up --build
+docker compose --profile durable-ingest up --build
+docker compose --profile advanced up --build
 ```
 
-4. Open the apps.
+Profiles:
+
+- `local-llm`: Ollama
+- `durable-ingest`: Temporal, Temporal UI, worker
+- `advanced`: Redis and Meilisearch
+
+### 4. Open the product
 
 - Web: `http://localhost:3000`
 - API docs: `http://localhost:8000/docs`
-- Temporal UI: `http://localhost:8233`
-- Wiki.js can be deployed separately on `wiki.uintell.org`; see `docs/wiki-js.md`
 
-Default bootstrap credentials:
+## Current Vertical Slice
 
-- Email: `admin@uintell.org`
-- Password: `ChangeMeNow123!`
+Implemented and being refined:
 
-Change them before exposing the stack anywhere outside local development.
+- source registration/import
+- ingestion status visibility
+- source/library browsing
+- article reader with table of contents, backlinks, and related pages
+- page-scoped AI answers with citations and supporting passages
+- hybrid retrieval over normalized document/chunk data
 
-## Ingestion flows
+## Documentation Map
 
-Trigger ingestion from the admin page or the API directly. The recommended flow is to register source profiles in the Admin page and ingest from there, but the raw endpoint still works:
+- [docs/progress.md](docs/progress.md): current execution plan and milestones
+- [docs/local-development.md](docs/local-development.md): recommended local setup
+- [docs/runtime-data.md](docs/runtime-data.md): code/data/runtime separation
+- [docs/architecture.md](docs/architecture.md): focused architecture notes
+- [docs/deployment.md](docs/deployment.md): deployment and advanced runtime notes
 
-```bash
-curl -X POST http://localhost:8000/v1/admin/ingest \
-  -H 'content-type: application/json' \
-  -d '{"source_type":"filesystem","target_path":"/workspace/data/demo/notes","document_kind":"note","source_name":"demo_notes"}'
-```
+## Guiding Principles
 
-```bash
-curl -X POST http://localhost:8000/v1/admin/ingest \
-  -H 'content-type: application/json' \
-  -d '{"source_type":"filesystem","target_path":"/workspace/data/demo/library","document_kind":"book","source_name":"demo_library"}'
-```
-
-```bash
-curl -X POST http://localhost:8000/v1/admin/ingest \
-  -H 'content-type: application/json' \
-  -d '{"profile_id":"wikipedia-dump","limit":1000}'
-```
-
-## Development commands
-
-- `make up`
-- `make down`
-- `make logs`
-- `make migrate`
-- `make seed-admin`
-- `make test-ai`
-- `make test-api`
-- `make test-worker`
-- `make test-web`
-
-## OpenAI integration
-
-The default local path is Ollama plus local embeddings. OpenAI remains optional.
-
-Behavior:
-
-- with Ollama available: local generation and embeddings are used
-- with an OpenAI API key and opt-in settings: OpenAI can be used as an alternate provider
-- without either: the system still runs using retrieval and the deterministic fallback provider
-
-This keeps the product usable in offline/local mode while preserving a clean upgrade path to alternative model backends.
-
-## Current caveats
-
-- The new Python/Next platform is a serious scaffold, not a fully hardened internet-facing product yet.
-- Temporal image tags are currently `latest` in Compose for local reliability; pin them before production.
-- The worker ingests incrementally and idempotently, but Wikipedia resume semantics are currently skip-based rather than offset-checkpoint based.
-- Frontend E2E coverage is not implemented yet; the current smoke bar is a production build.
-
-## Legacy system
-
-The previous Rust/Axum stack remains under `apps/backend`, `apps/frontend`, and `legacy/uintell-site`. It is intentionally not removed during this transition.
+- reader-first over dashboard-first
+- citation-first over AI theater
+- offline-first over cloud dependency
+- one strong vertical slice over broad unfinished surfaces
+- simpler defaults over infrastructure sprawl

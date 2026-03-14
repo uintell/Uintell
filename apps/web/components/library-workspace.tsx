@@ -1,6 +1,6 @@
 "use client";
 
-import type { DocumentRecord } from "@uintell/shared/contracts";
+import type { DocumentRecord, SourceSummary } from "@uintell/shared/contracts";
 import Link from "next/link";
 import { useDeferredValue, useEffect, useState } from "react";
 
@@ -21,6 +21,7 @@ type LibraryWorkspaceProps = {
 
 export function LibraryWorkspace({ initialSourceType = null }: LibraryWorkspaceProps) {
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
+  const [sources, setSources] = useState<SourceSummary[]>([]);
   const [query, setQuery] = useState("");
   const [sourceType, setSourceType] = useState<string | null>(initialSourceType);
   const [sort, setSort] = useState("updated_desc");
@@ -33,13 +34,21 @@ export function LibraryWorkspace({ initialSourceType = null }: LibraryWorkspaceP
     setLoading(true);
     setError(null);
     try {
-      const response = await api.listDocuments({
-        query: deferredQuery || undefined,
-        source_type: sourceType ?? undefined,
-        sort,
-        limit: 40,
-      });
-      setDocuments(response.documents);
+      const [documentsResponse, sourcesResponse] = await Promise.all([
+        api.listDocuments({
+          query: deferredQuery || undefined,
+          source_type: sourceType ?? undefined,
+          sort,
+          limit: 40,
+        }),
+        api.listSources({
+          query: deferredQuery || undefined,
+          source_type: sourceType ?? undefined,
+          limit: 18,
+        }),
+      ]);
+      setDocuments(documentsResponse.documents);
+      setSources(sourcesResponse.sources);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load documents");
     } finally {
@@ -59,15 +68,15 @@ export function LibraryWorkspace({ initialSourceType = null }: LibraryWorkspaceP
     <div className="space-y-6">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="text-xs uppercase tracking-[0.2em] text-muted">Document library</div>
-          <h1 className="mt-3 text-3xl font-semibold">Reader-first knowledge browser</h1>
+          <div className="text-xs uppercase tracking-[0.2em] text-muted">Library</div>
+          <h1 className="mt-3 text-3xl font-semibold">Browse sources, then open the page you need</h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-200">
-            Explore notes, books, wiki articles, and imported documents in one library. Open any result into the
-            dedicated reader view with backlinks and related references.
+            Explore normalized sources and documents through one calm library. Start at the source level when you are
+            orienting yourself, then drop into the reader for page-level questions and citations.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link href="/app/admin" className="rounded-full border border-line px-4 py-2 text-sm text-slate-100 transition hover:border-accent">
+          <Link href="/app/imports" className="rounded-full border border-line px-4 py-2 text-sm text-slate-100 transition hover:border-accent">
             Import sources
           </Link>
           <label className="cursor-pointer rounded-full border border-line px-4 py-2 text-sm text-slate-100 transition hover:border-accent">
@@ -132,6 +141,54 @@ export function LibraryWorkspace({ initialSourceType = null }: LibraryWorkspaceP
         </div>
       </div>
 
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-xs uppercase tracking-[0.18em] text-muted">Sources</div>
+            <h2 className="mt-2 text-2xl font-semibold text-white">Collections of knowledge</h2>
+          </div>
+          <div className="text-sm text-muted">{sources.length} visible</div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {loading ? <div className="rounded-3xl border border-line bg-panel p-6 text-sm text-muted">Loading sources...</div> : null}
+          {!loading && sources.length === 0 ? <div className="rounded-3xl border border-dashed border-line p-6 text-sm text-muted">No sources matched this view.</div> : null}
+          {sources.map((source) => (
+            <Link
+              key={`${source.source_type}:${source.source_name}`}
+              href={`/app/library/source/${encodeURIComponent(source.source_type)}/${encodeURIComponent(source.source_name)}`}
+              className="rounded-3xl border border-line bg-panel p-5 transition hover:border-accent"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-lg font-medium text-white">{source.source_name}</div>
+                  <div className="mt-1 text-xs uppercase tracking-[0.18em] text-muted">{source.source_type}</div>
+                </div>
+                <div className="text-right text-xs text-accent">
+                  <div>{source.document_count} docs</div>
+                  <div>{source.indexed_count} indexed</div>
+                </div>
+              </div>
+              {source.document_kinds.length ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {source.document_kinds.slice(0, 3).map((kind) => (
+                    <span key={kind} className="rounded-full border border-line px-3 py-1 text-xs text-muted">
+                      {kind}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <div>
+          <div className="text-xs uppercase tracking-[0.18em] text-muted">Documents</div>
+          <h2 className="mt-2 text-2xl font-semibold text-white">Reader-ready pages</h2>
+        </div>
+
       <div className="grid gap-4 md:grid-cols-2">
         {loading ? <div className="rounded-3xl border border-line bg-panel p-6 text-sm text-muted">Loading documents...</div> : null}
         {!loading && documents.length === 0 ? <div className="rounded-3xl border border-dashed border-line p-6 text-sm text-muted">No documents matched this view.</div> : null}
@@ -164,6 +221,12 @@ export function LibraryWorkspace({ initialSourceType = null }: LibraryWorkspaceP
                   Open reader
                 </Link>
               ) : null}
+              <Link
+                href={`/app/library/source/${encodeURIComponent(document.source_type)}/${encodeURIComponent(document.source_name)}`}
+                className="text-sm text-muted hover:text-accent"
+              >
+                View source
+              </Link>
               {document.path_or_url ? (
                 <a href={document.path_or_url} target="_blank" rel="noreferrer" className="text-sm text-muted hover:text-accent">
                   Open source
@@ -173,6 +236,7 @@ export function LibraryWorkspace({ initialSourceType = null }: LibraryWorkspaceP
           </article>
         ))}
       </div>
+      </section>
     </div>
   );
 }

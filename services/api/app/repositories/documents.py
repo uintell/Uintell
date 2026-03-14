@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from uuid import UUID
 
-from sqlalchemy import Select, delete, func, or_, select, text
+from sqlalchemy import Select, case, delete, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entities import Document, DocumentChunk, DocumentLink, DocumentStatus, EmbeddingStatus
@@ -18,6 +18,7 @@ class DocumentRepository:
         *,
         query: str | None = None,
         source_type: str | None = None,
+        source_name: str | None = None,
         source_types: Sequence[str] | None = None,
         document_kind: str | None = None,
         tag: str | None = None,
@@ -29,6 +30,8 @@ class DocumentRepository:
             statement = statement.where(Document.source_type.in_(list(source_types)))
         elif source_type:
             statement = statement.where(Document.source_type == source_type)
+        if source_name:
+            statement = statement.where(Document.source_name == source_name)
         if document_kind:
             statement = statement.where(Document.document_kind == document_kind)
         if tag:
@@ -51,6 +54,53 @@ class DocumentRepository:
         statement = statement.limit(limit)
         result = await db.execute(statement)
         return list(result.scalars().all())
+
+    async def list_sources(
+        self,
+        db: AsyncSession,
+        *,
+        query: str | None = None,
+        source_type: str | None = None,
+        limit: int = 50,
+    ) -> list[dict[str, object]]:
+        statement = (
+            select(
+                Document.source_type,
+                Document.source_name,
+                func.count(Document.id).label("document_count"),
+                func.sum(
+                    case((Document.indexing_status == DocumentStatus.INDEXED.value, 1), else_=0)
+                ).label("indexed_count"),
+                func.max(Document.updated_at).label("latest_updated_at"),
+                func.array_agg(func.distinct(Document.document_kind)).label("document_kinds"),
+            )
+            .group_by(Document.source_type, Document.source_name)
+            .order_by(func.max(Document.updated_at).desc(), Document.source_name.asc())
+            .limit(limit)
+        )
+        if source_type:
+            statement = statement.where(Document.source_type == source_type)
+        if query:
+            pattern = f"%{query.strip()}%"
+            statement = statement.where(
+                or_(
+                    Document.source_name.ilike(pattern),
+                    Document.title.ilike(pattern),
+                    Document.summary.ilike(pattern),
+                )
+            )
+        result = await db.execute(statement)
+        return [
+            {
+                "source_type": row.source_type,
+                "source_name": row.source_name,
+                "document_count": row.document_count,
+                "indexed_count": row.indexed_count or 0,
+                "latest_updated_at": row.latest_updated_at,
+                "document_kinds": [value for value in (row.document_kinds or []) if value],
+            }
+            for row in result
+        ]
 
     async def get_document(self, db: AsyncSession, document_id: UUID) -> Document | None:
         return await db.get(Document, document_id)
@@ -248,6 +298,8 @@ class DocumentRepository:
         chunk_ids: Sequence[str],
         *,
         source_types: Sequence[str] | None = None,
+        source_names: Sequence[str] | None = None,
+        document_ids: Sequence[str] | None = None,
         tags: Sequence[str] | None = None,
     ) -> list[RetrievedChunk]:
         if not chunk_ids:
@@ -259,6 +311,10 @@ class DocumentRepository:
         )
         if source_types:
             statement = statement.where(Document.source_type.in_(list(source_types)))
+        if source_names:
+            statement = statement.where(Document.source_name.in_(list(source_names)))
+        if document_ids:
+            statement = statement.where(Document.id.in_([UUID(document_id) for document_id in document_ids]))
         if tags:
             statement = statement.where(or_(*[Document.tags_json.contains([tag]) for tag in tags]))
         rows = await db.execute(statement)
@@ -291,6 +347,7 @@ class DocumentRepository:
         *,
         query: str,
         source_types: Sequence[str] | None = None,
+        source_names: Sequence[str] | None = None,
         document_ids: Sequence[str] | None = None,
         limit: int = 10,
     ) -> list[str]:
@@ -305,6 +362,9 @@ class DocumentRepository:
         if source_types:
             sql += " AND d.source_type = ANY(:source_types)"
             params["source_types"] = list(source_types)
+        if source_names:
+            sql += " AND d.source_name = ANY(:source_names)"
+            params["source_names"] = list(source_names)
         if document_ids:
             sql += " AND d.id::text = ANY(:document_ids)"
             params["document_ids"] = list(document_ids)

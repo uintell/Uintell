@@ -1,40 +1,44 @@
 # Deployment Notes
 
-## Local-first deployment model
+## Default Product Deployment
 
-The current deployment target is self-hosted local or single-host infrastructure.
+The primary deployment target is a self-hosted, reader-first knowledge product with a small default stack:
 
-Recommended baseline:
+- web
+- api
+- PostgreSQL
+- Qdrant
 
-- reverse proxy in front of `apps/web`
-- API reachable only from the reverse proxy or trusted network
-- Postgres, Redis, Qdrant, and Temporal on a private network
-- object storage on local disk or S3-compatible storage
+That is the baseline deployment for the main vertical slice.
 
-## Environment handling
+## Optional Components
 
-- use service-specific env files for local development
-- move secrets to a secret manager before production
-- rotate the seeded admin password immediately
-- start the Next.js web service from a fresh build artifact; stale or partial `.next` output can surface as route `ChunkLoadError` failures in the browser
+Add these only when the product need is clear:
 
-## Cookies and origins
+- Ollama for local generation/embeddings
+- OpenAI for hosted generation/embeddings
+- Temporal + worker for more durable ingestion execution
+- Meilisearch for additional search acceleration
+- Redis for distributed rate limiting
 
-- `SECURE_COOKIES=true` behind HTTPS
-- set `WEB_ORIGIN` and `CORS_ORIGINS` to the exact deployed frontend origins
+## Security Basics
 
-## Operational next steps before internet exposure
+- set `SECURE_COOKIES=true` behind HTTPS
+- set `WEB_ORIGIN` and `CORS_ORIGINS` exactly
+- keep secrets in env or a secret manager, not in source
+- set your own seeded admin password before first run
 
-- add CSRF protection for state-changing cookie-authenticated requests
-- place the API behind a reverse proxy and TLS
-- pin Temporal image versions
-- enable persistent backups for Postgres and Qdrant
-- externalize OTLP exporter configuration to your telemetry stack
-- add real access control for admin-only operations
+## Operational Direction
 
-## Scaling direction
+- treat PostgreSQL as canonical knowledge state
+- treat Qdrant as a derived retrieval index
+- keep imports and uploads outside the repo root
+- keep the default runtime simple enough for one developer machine
 
-- API can scale horizontally if session state remains in Postgres/Redis
-- worker scale is governed by Temporal task queue concurrency
-- Qdrant can be moved to managed or clustered deployment later
-- storage abstraction already supports moving uploads off local disk
+## Before Public Exposure
+
+- add stronger CSRF protection
+- harden authz around admin/import operations
+- enable backups for PostgreSQL and Qdrant
+- pin container versions for advanced profiles
+- move secrets to a dedicated secret manager

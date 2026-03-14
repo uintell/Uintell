@@ -15,6 +15,7 @@ services:
   redis:
     image: redis:7
     restart: unless-stopped
+    profiles: ["advanced"]
     ports:
       - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
@@ -31,6 +32,7 @@ services:
   meilisearch:
     image: getmeili/meilisearch:v1.15
     restart: unless-stopped
+    profiles: ["advanced"]
     environment:
       MEILI_NO_ANALYTICS: "true"
       MEILI_ENV: development
@@ -42,6 +44,7 @@ services:
   ollama:
     image: ollama/ollama:0.6.2
     restart: unless-stopped
+    profiles: ["local-llm"]
     ports:
       - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
     volumes:
@@ -50,6 +53,7 @@ services:
   temporal:
     image: temporalio/auto-setup:latest
     restart: unless-stopped
+    profiles: ["durable-ingest"]
     depends_on:
       - postgres
     environment:
@@ -64,6 +68,7 @@ services:
   temporal-ui:
     image: temporalio/ui:latest
     restart: unless-stopped
+    profiles: ["durable-ingest"]
     depends_on:
       - temporal
     environment:
@@ -80,32 +85,22 @@ services:
     restart: unless-stopped
     depends_on:
       - postgres
-      - redis
       - qdrant
-      - meilisearch
-      - ollama
-      - temporal
     env_file:
       - services/api/.env.example
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-uintell}
-      REDIS_URL: redis://redis:6379/0
       QDRANT_URL: http://qdrant:6333
-      MEILISEARCH_URL: http://meilisearch:7700
-      TEMPORAL_HOST: temporal:7233
       WEB_ORIGIN: http://localhost:${WEB_PORT:-3000}
       CORS_ORIGINS: http://localhost:${WEB_PORT:-3000},http://127.0.0.1:${WEB_PORT:-3000}
-      LOCAL_STORAGE_ROOT: /workspace/var/storage
-      ARCHWIKI_ROOT: /workspace/data/imports/archwiki/html
-      WIKIPEDIA_DUMP_PATH: /workspace/data/imports/wikipedia/enwiki-latest-pages-articles-multistream.xml.bz2
+      LOCAL_STORAGE_ROOT: /data/uintell/storage
+      ARCHWIKI_ROOT: /data/uintell/imports/archwiki/html
+      WIKIPEDIA_DUMP_PATH: /data/uintell/imports/wikipedia/enwiki-latest-pages-articles-multistream.xml.bz2
       LOCAL_DOCS_ROOT: /workspace/data/local-docs
-      OLLAMA_BASE_URL: http://ollama:11434
-      GENERATION_PROVIDER: ollama
-      EMBEDDING_PROVIDER: ollama
-      ENABLE_OPENAI_GENERATION: "false"
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./:/workspace
+      - uintell-runtime:/data/uintell
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
 
@@ -115,30 +110,25 @@ services:
       context: .
       dockerfile: infra/docker/worker.Dockerfile
     restart: unless-stopped
+    profiles: ["durable-ingest"]
     depends_on:
       - postgres
-      - redis
       - qdrant
-      - meilisearch
-      - ollama
       - temporal
     env_file:
       - services/worker/.env.example
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-uintell}
-      REDIS_URL: redis://redis:6379/0
       QDRANT_URL: http://qdrant:6333
-      MEILISEARCH_URL: http://meilisearch:7700
       TEMPORAL_HOST: temporal:7233
-      LOCAL_STORAGE_ROOT: /workspace/var/storage
-      ARCHWIKI_ROOT: /workspace/data/imports/archwiki/html
-      WIKIPEDIA_DUMP_PATH: /workspace/data/imports/wikipedia/enwiki-latest-pages-articles-multistream.xml.bz2
+      LOCAL_STORAGE_ROOT: /data/uintell/storage
+      ARCHWIKI_ROOT: /data/uintell/imports/archwiki/html
+      WIKIPEDIA_DUMP_PATH: /data/uintell/imports/wikipedia/enwiki-latest-pages-articles-multistream.xml.bz2
       LOCAL_DOCS_ROOT: /workspace/data/local-docs
-      OLLAMA_BASE_URL: http://ollama:11434
-      EMBEDDING_PROVIDER: ollama
     command: python -m worker_app.main
     volumes:
       - ./:/workspace
+      - uintell-runtime:/data/uintell
 
   web:
     image: uintell-web-dev
@@ -168,3 +158,4 @@ volumes:
   ollama-data:
   web-node-modules:
   web-next-cache:
+  uintell-runtime:

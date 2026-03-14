@@ -7,7 +7,10 @@ import type {
   DocumentRecord,
   IngestionJob,
   NoteRecord,
+  PageAnswer,
   SearchResponse,
+  SourceDetail,
+  SourceSummary,
   SourceProfile,
   User,
 } from "@uintell/shared/contracts";
@@ -93,6 +96,7 @@ export const api = {
   listDocuments: (filters?: {
     query?: string;
     source_type?: string;
+    source_name?: string;
     source_types?: string[];
     document_kind?: string;
     tag?: string;
@@ -102,6 +106,7 @@ export const api = {
     request<{ documents: DocumentRecord[] }>(`/v1/documents${buildQueryString({
       query: filters?.query,
       source_type: filters?.source_type,
+      source_name: filters?.source_name,
       source_types: filters?.source_types,
       document_kind: filters?.document_kind,
       tag: filters?.tag,
@@ -110,6 +115,16 @@ export const api = {
     })}`),
   getDocument: (documentId: string) => request<DocumentDetail>(`/v1/documents/${documentId}`),
   getDocumentBySlug: (slug: string) => request<DocumentDetail>(`/v1/documents/slug/${slug}`),
+  answerDocument: (documentId: string, payload: { question: string; mode?: string }) =>
+    request<PageAnswer>(`/v1/documents/${documentId}/answer`, { method: "POST", body: JSON.stringify(payload) }),
+  listSources: (filters?: { query?: string; source_type?: string; limit?: number }) =>
+    request<{ sources: SourceSummary[] }>(`/v1/documents/sources${buildQueryString({
+      query: filters?.query,
+      source_type: filters?.source_type,
+      limit: filters?.limit,
+    })}`),
+  getSourceDetail: (sourceType: string, sourceName: string) =>
+    request<SourceDetail>(`/v1/documents/sources/${encodeURIComponent(sourceType)}/${encodeURIComponent(sourceName)}`),
   uploadDocument: async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);

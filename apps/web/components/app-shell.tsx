@@ -10,13 +10,10 @@ import { useAuth } from "@/components/providers";
 
 const navigation = [
   { href: "/app", label: "Home" },
-  { href: "/app/chat", label: "Chat" },
-  { href: "/app/search", label: "Search" },
   { href: "/app/library", label: "Library" },
-  { href: "/app/notes", label: "Pages" },
-  { href: "/app/collections", label: "Collections" },
+  { href: "/app/search", label: "Search" },
+  { href: "/app/imports", label: "Imports" },
   { href: "/app/settings", label: "Settings" },
-  { href: "/app/admin", label: "Admin" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -53,7 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <div>
               <div className="text-xs uppercase tracking-[0.28em] text-[#00a126]">United Intelligence</div>
-              <div className="mt-2 text-sm text-[#5faa73]">Knowledge workspace for retrieval, pages, search, and ingestion.</div>
+              <div className="mt-2 text-sm text-[#5faa73]">Offline-first knowledge reader for sources, pages, search, and cited answers.</div>
             </div>
           </div>
           <nav className="mt-8 space-y-2">

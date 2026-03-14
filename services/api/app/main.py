@@ -19,11 +19,13 @@ from app.db.session import build_engine, build_session_factory
 from app.repositories.admin import AdminRepository
 from app.repositories.conversations import ConversationRepository
 from app.repositories.documents import DocumentRepository
+from app.services.answers import AnswerService
 from app.services.chat import ChatService
 from app.services.container import ServiceContainer
 from app.services.ingestion import IngestionService
 from app.services.meilisearch import MeiliSearchService
 from app.services.providers import build_provider
+from app.services.rate_limit import RateLimiter
 from app.services.retrieval import RetrievalService
 from app.services.security import SecurityService
 from app.services.settings import SettingsService
@@ -43,7 +45,7 @@ async def lifespan(app: FastAPI):
 
     engine = build_engine(settings.database_url)
     session_factory = build_session_factory(engine)
-    redis = Redis.from_url(settings.redis_url, decode_responses=True)
+    redis = Redis.from_url(settings.redis_url, decode_responses=True) if settings.redis_url else None
     qdrant = AsyncQdrantClient(
         url=settings.qdrant_url,
         api_key=settings.qdrant_api_key,
@@ -73,10 +75,14 @@ async def lifespan(app: FastAPI):
         embedding_provider_name = "hash"
         embedding_model_name = "hash"
 
-    meilisearch = MeiliSearchService(
-        url=settings.meilisearch_url,
-        index_name=settings.meilisearch_index,
-        api_key=settings.meilisearch_api_key,
+    meilisearch = (
+        MeiliSearchService(
+            url=settings.meilisearch_url,
+            index_name=settings.meilisearch_index,
+            api_key=settings.meilisearch_api_key,
+        )
+        if settings.meilisearch_url
+        else None
     )
     retrieval = RetrievalService(
         document_repository=DocumentRepository(),
@@ -105,6 +111,11 @@ async def lifespan(app: FastAPI):
         engine=engine,
         session_factory=session_factory,
         redis=redis,
+        rate_limiter=RateLimiter(
+            redis,
+            limit=settings.rate_limit_requests,
+            window_seconds=settings.rate_limit_window_seconds,
+        ),
         qdrant=qdrant,
         temporal=temporal,
         security=SecurityService(settings.session_ttl_hours),
@@ -118,6 +129,12 @@ async def lifespan(app: FastAPI):
             provider=provider,
             tool_registry=tool_registry,
         ),
+        answers=AnswerService(
+            settings=settings,
+            document_repository=DocumentRepository(),
+            retrieval_service=retrieval,
+            provider=provider,
+        ),
         ingestion=IngestionService(
             session_factory=session_factory,
             document_repository=DocumentRepository(),
@@ -129,9 +146,16 @@ async def lifespan(app: FastAPI):
         app_settings=SettingsService(settings=settings, admin_repository=AdminRepository()),
     )
     app.state.container = container
-    logger.info("api.startup.complete", temporal_enabled=temporal is not None, qdrant_collection=settings.qdrant_collection)
+    logger.info(
+        "api.startup.complete",
+        temporal_enabled=temporal is not None,
+        redis_enabled=redis is not None,
+        meilisearch_enabled=meilisearch is not None,
+        qdrant_collection=settings.qdrant_collection,
+    )
     yield
-    await redis.close()
+    if redis is not None:
+        await redis.close()
     await qdrant.close()
     await engine.dispose()
 
@@ -166,10 +190,7 @@ async def request_context_middleware(request: Request, call_next):
     if request.url.path not in {"/health", "/ready"}:
         client_ip = request.client.host if request.client else "unknown"
         key = f"rate:{client_ip}:{request.url.path}"
-        current = await request.app.state.container.redis.incr(key)
-        if current == 1:
-            await request.app.state.container.redis.expire(key, request.app.state.container.settings.rate_limit_window_seconds)
-        if current > request.app.state.container.settings.rate_limit_requests:
+        if await request.app.state.container.rate_limiter.is_limited(key):
             return JSONResponse(
                 status_code=429,
                 content={"detail": "Rate limit exceeded"},
@@ -182,6 +203,8 @@ async def request_context_middleware(request: Request, call_next):
 
 
 async def _connect_temporal(settings):
+    if not settings.temporal_host:
+        return None
     last_error = None
     for attempt in range(1, 6):
         try:

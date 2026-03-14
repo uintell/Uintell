@@ -15,6 +15,18 @@ export interface Citation {
   path_or_url: string;
 }
 
+export interface SupportingPassage {
+  label: string;
+  document_id: string;
+  document_slug?: string | null;
+  title: string;
+  section_title?: string | null;
+  excerpt: string;
+  source_type: string;
+  path_or_url?: string | null;
+  score: number;
+}
+
 export interface ChatMessage {
   id: string;
   role: string;
@@ -59,6 +71,25 @@ export interface SearchResult {
 export interface SearchResponse {
   mode: string;
   results: SearchResult[];
+}
+
+export interface SourceSummary {
+  source_type: string;
+  source_name: string;
+  document_count: number;
+  indexed_count: number;
+  latest_updated_at?: string | null;
+  document_kinds: string[];
+}
+
+export interface SourceDetail {
+  source_type: string;
+  source_name: string;
+  document_count: number;
+  indexed_count: number;
+  latest_updated_at?: string | null;
+  document_kinds: string[];
+  documents: DocumentRecord[];
 }
 
 export interface DocumentRecord {
@@ -107,6 +138,15 @@ export interface DocumentDetail extends DocumentRecord {
   media_references: string[];
   backlinks: RelatedDocument[];
   related_documents: RelatedDocument[];
+}
+
+export interface PageAnswer {
+  answer: string;
+  scope_used: string;
+  citations: Citation[];
+  supporting_passages: SupportingPassage[];
+  provider_name: string;
+  model_name: string;
 }
 
 export interface NoteRecord {
