@@ -1,0 +1,170 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-uintell}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/docker/postgres/init:/docker-entrypoint-initdb.d:ro
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+
+  qdrant:
+    image: qdrant/qdrant:v1.13.4
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${QDRANT_PORT:-6333}:6333"
+    volumes:
+      - qdrant-data:/qdrant/storage
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.15
+    restart: unless-stopped
+    environment:
+      MEILI_NO_ANALYTICS: "true"
+      MEILI_ENV: development
+    ports:
+      - "127.0.0.1:${MEILISEARCH_PORT:-7700}:7700"
+    volumes:
+      - meilisearch-data:/meili_data
+
+  ollama:
+    image: ollama/ollama:0.6.2
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+
+  temporal:
+    image: temporalio/auto-setup:latest
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PWD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_SEEDS: postgres
+    ports:
+      - "127.0.0.1:${TEMPORAL_PORT:-7233}:7233"
+
+  temporal-ui:
+    image: temporalio/ui:latest
+    restart: unless-stopped
+    depends_on:
+      - temporal
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:${WEB_PORT:-3000}
+    ports:
+      - "127.0.0.1:${TEMPORAL_UI_PORT:-8233}:8080"
+
+  api:
+    image: uintell-api-dev
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+      - qdrant
+      - meilisearch
+      - ollama
+      - temporal
+    env_file:
+      - services/api/.env.example
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-uintell}
+      REDIS_URL: redis://redis:6379/0
+      QDRANT_URL: http://qdrant:6333
+      MEILISEARCH_URL: http://meilisearch:7700
+      TEMPORAL_HOST: temporal:7233
+      WEB_ORIGIN: http://localhost:${WEB_PORT:-3000}
+      CORS_ORIGINS: http://localhost:${WEB_PORT:-3000},http://127.0.0.1:${WEB_PORT:-3000}
+      LOCAL_STORAGE_ROOT: /workspace/var/storage
+      ARCHWIKI_ROOT: /workspace/data/imports/archwiki/html
+      WIKIPEDIA_DUMP_PATH: /workspace/data/imports/wikipedia/enwiki-latest-pages-articles-multistream.xml.bz2
+      LOCAL_DOCS_ROOT: /workspace/data/local-docs
+      OLLAMA_BASE_URL: http://ollama:11434
+      GENERATION_PROVIDER: ollama
+      EMBEDDING_PROVIDER: ollama
+      ENABLE_OPENAI_GENERATION: "false"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./:/workspace
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+
+  worker:
+    image: uintell-worker-dev
+    build:
+      context: .
+      dockerfile: infra/docker/worker.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+      - qdrant
+      - meilisearch
+      - ollama
+      - temporal
+    env_file:
+      - services/worker/.env.example
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-uintell}
+      REDIS_URL: redis://redis:6379/0
+      QDRANT_URL: http://qdrant:6333
+      MEILISEARCH_URL: http://meilisearch:7700
+      TEMPORAL_HOST: temporal:7233
+      LOCAL_STORAGE_ROOT: /workspace/var/storage
+      ARCHWIKI_ROOT: /workspace/data/imports/archwiki/html
+      WIKIPEDIA_DUMP_PATH: /workspace/data/imports/wikipedia/enwiki-latest-pages-articles-multistream.xml.bz2
+      LOCAL_DOCS_ROOT: /workspace/data/local-docs
+      OLLAMA_BASE_URL: http://ollama:11434
+      EMBEDDING_PROVIDER: ollama
+    command: python -m worker_app.main
+    volumes:
+      - ./:/workspace
+
+  web:
+    image: uintell-web-dev
+    build:
+      context: .
+      dockerfile: infra/docker/web.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      PORT: 3000
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:${API_PORT:-8000}
+    command: sh -lc "npm install && npm run dev -- --hostname 0.0.0.0 --port 3000"
+    volumes:
+      - ./:/workspace
+      - web-node-modules:/workspace/node_modules
+      - web-next-cache:/workspace/apps/web/.next
+    working_dir: /workspace/apps/web
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+
+volumes:
+  postgres-data:
+  redis-data:
+  qdrant-data:
+  meilisearch-data:
+  ollama-data:
+  web-node-modules:
+  web-next-cache:

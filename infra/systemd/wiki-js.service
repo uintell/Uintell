@@ -1,0 +1,16 @@
+[Unit]
+Description=Wiki.js knowledge wiki
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=x1
+WorkingDirectory=/home/x1/projectx/var/wiki-js/current
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node server
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

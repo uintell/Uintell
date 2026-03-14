@@ -1,0 +1,1 @@
+Offline-first knowledge systems should always preserve source attribution, support local indexing, and degrade gracefully when no external model provider is configured.

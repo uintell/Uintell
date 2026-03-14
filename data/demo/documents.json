@@ -1,0 +1,118 @@
+[
+  {
+    "canonical_id": "wikipedia:en:page:demo-linux",
+    "source_type": "wikipedia",
+    "source_name": "English Wikipedia",
+    "article_title": "Linux",
+    "language": "en",
+    "path_or_url": "https://en.wikipedia.org/wiki/Linux",
+    "source_revision": "demo-1",
+    "summary": "Linux is a family of open-source Unix-like operating systems based on the Linux kernel.",
+    "body_text": "Linux is a family of open-source Unix-like operating systems based on the Linux kernel. It is typically packaged with other software into Linux distributions. Linux is widely used on servers, desktops, and embedded devices.",
+    "sections": [
+      {
+        "title": "Overview",
+        "heading_path": ["Overview"],
+        "content": "Linux is a family of open-source Unix-like operating systems based on the Linux kernel. Linux distributions combine the kernel with package managers, libraries, and user-facing tools.",
+        "metadata": {}
+      },
+      {
+        "title": "Usage",
+        "heading_path": ["Usage"],
+        "content": "Linux is widely used in servers, cloud infrastructure, embedded devices, and developer workstations. Distributions vary, but they typically include a package manager and a configurable shell environment.",
+        "metadata": {}
+      }
+    ],
+    "categories": ["Operating systems", "Free software"],
+    "metadata": {
+      "demo": true
+    }
+  },
+  {
+    "canonical_id": "wikipedia:en:page:demo-archlinux",
+    "source_type": "wikipedia",
+    "source_name": "English Wikipedia",
+    "article_title": "Arch Linux",
+    "language": "en",
+    "path_or_url": "https://en.wikipedia.org/wiki/Arch_Linux",
+    "source_revision": "demo-1",
+    "summary": "Arch Linux is an independently developed x86-64 general-purpose Linux distribution.",
+    "body_text": "Arch Linux is an independently developed x86-64 general-purpose Linux distribution that strives for simplicity, modernity, pragmatism, user centrality, and versatility. It uses a rolling release model and the pacman package manager.",
+    "sections": [
+      {
+        "title": "Overview",
+        "heading_path": ["Overview"],
+        "content": "Arch Linux is an independently developed x86-64 general-purpose Linux distribution. It follows a rolling release model rather than fixed major releases.",
+        "metadata": {}
+      },
+      {
+        "title": "Package management",
+        "heading_path": ["Package management"],
+        "content": "Arch Linux uses the pacman package manager for installing, updating, and removing software packages from official repositories.",
+        "metadata": {}
+      }
+    ],
+    "categories": ["Linux distributions"],
+    "metadata": {
+      "demo": true
+    }
+  },
+  {
+    "canonical_id": "archwiki:en:Pacman",
+    "source_type": "arch_wiki",
+    "source_name": "ArchWiki Offline",
+    "article_title": "Pacman",
+    "language": "en",
+    "path_or_url": "/usr/share/doc/arch-wiki/html/en/Pacman.html",
+    "source_revision": "demo-1",
+    "summary": "Pacman is the package manager used by Arch Linux.",
+    "body_text": "Pacman is the package manager used by Arch Linux. It can install, upgrade, configure, and remove packages. Pacman synchronizes package databases and supports system upgrades with pacman -Syu.",
+    "sections": [
+      {
+        "title": "Overview",
+        "heading_path": ["Overview"],
+        "content": "Pacman is the package manager used by Arch Linux. It synchronizes package databases and performs system upgrades.",
+        "metadata": {}
+      },
+      {
+        "title": "Examples",
+        "heading_path": ["Examples"],
+        "content": "To refresh package databases and upgrade the system, run ```text\npacman -Syu\n```.",
+        "metadata": {}
+      }
+    ],
+    "categories": ["Package management"],
+    "metadata": {
+      "demo": true
+    }
+  },
+  {
+    "canonical_id": "archwiki:en:systemd",
+    "source_type": "arch_wiki",
+    "source_name": "ArchWiki Offline",
+    "article_title": "systemd",
+    "language": "en",
+    "path_or_url": "/usr/share/doc/arch-wiki/html/en/systemd.html",
+    "source_revision": "demo-1",
+    "summary": "systemd is the system and service manager used on Arch Linux.",
+    "body_text": "systemd is the system and service manager used on Arch Linux. It manages units such as services, sockets, mounts, and timers. The systemctl command is used to inspect and control systemd units.",
+    "sections": [
+      {
+        "title": "Overview",
+        "heading_path": ["Overview"],
+        "content": "systemd is the system and service manager used on Arch Linux. It manages services, timers, mounts, sockets, and other units.",
+        "metadata": {}
+      },
+      {
+        "title": "Examples",
+        "heading_path": ["Examples"],
+        "content": "To start a service immediately and enable it at boot, use ```text\nsystemctl enable --now sshd.service\n```.",
+        "metadata": {}
+      }
+    ],
+    "categories": ["Init systems"],
+    "metadata": {
+      "demo": true
+    }
+  }
+]

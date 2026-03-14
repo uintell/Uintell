@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "uintell-worker"
+version = "0.1.0"
+description = "Temporal worker for United Intelligence ingestion and indexing jobs."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "temporalio==1.18.1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==8.4.2",
+]
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["worker_app*"]

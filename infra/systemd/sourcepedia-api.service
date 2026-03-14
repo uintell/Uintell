@@ -1,0 +1,17 @@
+[Unit]
+Description=Sourcepedia FastAPI service
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=x1
+WorkingDirectory=/home/x1/projectx/services/api
+EnvironmentFile=-/etc/uintell/sourcepedia.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/x1/projectx/.venv-prod/bin/uvicorn app.main:app --host 127.0.0.1 --port 8080
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

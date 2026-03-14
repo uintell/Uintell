@@ -1,0 +1,17 @@
+[Unit]
+Description=United Intelligence Rust web application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=x1
+WorkingDirectory=/home/x1/projectx
+Environment=HOST=127.0.0.1
+Environment=PORT=3001
+ExecStart=/home/x1/projectx/target/release/united-intelligence
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

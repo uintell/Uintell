@@ -1,0 +1,16 @@
+.git
+target
+apps/web/.next
+apps/web/node_modules
+apps/frontend/.next
+apps/frontend/node_modules
+node_modules
+legacy
+var
+enwiki-latest-pages-articles-multistream.xml.bz2
+enwiki-latest-pages-articles-multistream-index.txt.bz2
+enwiki-titles.txt
+ghosthacker_circle_with_transparent_6step.png
+*.log
+__pycache__
+.pytest_cache

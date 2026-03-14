@@ -1,0 +1,42 @@
+United Intelligence Project Report
+Updated: 2026-03-12
+
+Current State
+United Intelligence is a Rust-based website deployed for uintell.org and www.uintell.org.
+The live site is intentionally minimal: a black page with the generated logo and the text "United Intelligence" under it.
+
+What Is Running
+1. Cloudflare DNS and Cloudflare Tunnel accept public traffic.
+2. Nginx proxies uintell.org and www.uintell.org to 127.0.0.1:3001.
+3. The Rust application serves:
+   - /
+   - /healthz
+   - /logo.svg
+   - /runtime-logo.svg
+4. The united-intelligence systemd service starts the Rust app at boot.
+
+What Was Removed
+1. The SearXNG container was removed.
+2. The SearXNG clone and runtime files were removed from this project.
+3. Old static page assets were removed.
+4. Reverse-proxy application code for SearXNG was removed.
+
+Important Files
+- /home/x1/projectx/Cargo.toml
+- /home/x1/projectx/src/main.rs
+- /home/x1/projectx/src/logo.rs
+- /home/x1/projectx/src/bin/generate_logo.rs
+- /home/x1/projectx/united-intelligence.service
+- /home/x1/projectx/uintell.org.nginx.conf
+
+Useful Commands
+- systemctl status united-intelligence.service
+- journalctl -u united-intelligence.service -f
+- curl http://127.0.0.1:3001/healthz
+- cargo build --release
+- cargo run --bin generate_logo
+
+Next Work
+1. Refine the logo geometry or proportions if needed.
+2. Tune the text spacing, sizing, or placement on the homepage.
+3. Add more pages only when the final direction is clear.

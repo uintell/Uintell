@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "knowledge-engine"
+version = "0.1.0"
+description = "Offline-first document parsing, chunking, embeddings, and retrieval helpers."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "beautifulsoup4==4.13.5",
+  "EbookLib==0.19",
+  "httpx==0.28.1",
+  "markdown==3.8.2",
+  "mwparserfromhell==0.7.2",
+  "openai==1.108.1",
+  "pydantic==2.11.9",
+  "pypdf==5.9.0",
+  "PyYAML==6.0.2",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
