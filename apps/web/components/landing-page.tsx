@@ -7,7 +7,6 @@ import {
   Menu,
   Search,
   Settings2,
-  Sparkles,
   Wrench,
 } from "lucide-react";
 
@@ -47,9 +46,9 @@ const pageTabs = [
 
 const contents = [
   { href: "#welcome", label: "Welcome" },
-  { href: "#intelligence-hub", label: "Intelligence hub" },
-  { href: "#knowledge-base", label: "Knowledge base" },
-  { href: "#workspace-tools", label: "Workspace tools" },
+  { href: "#core-flow", label: "Core flow" },
+  { href: "#library", label: "Library" },
+  { href: "#imports", label: "Imports" },
 ];
 
 const toolLinks = [
@@ -61,23 +60,23 @@ const toolLinks = [
 
 const articleCards = [
   {
-    id: "intelligence-hub",
-    eyebrow: "From United Intelligence",
-    title: "Intelligence hub",
+    id: "core-flow",
+    eyebrow: "Focused product path",
+    title: "Core flow",
     body:
-      "Move between search, library browsing, and source imports from one front page, using the familiar wiki-style structure as the starting point.",
+      "The active product path is simple: import a source, browse the library, open a page, ask about that page, and inspect the evidence.",
     links: [
-      { href: "/app/search", label: "Run search" },
-      { href: "/app/library", label: "Open library" },
+      { href: "/app/imports", label: "Import source" },
+      { href: "/app/library", label: "Browse library" },
     ],
-    icon: Sparkles,
+    icon: FileClock,
   },
   {
-    id: "knowledge-base",
-    eyebrow: "Featured knowledge",
-    title: "Knowledge base",
+    id: "library",
+    eyebrow: "Reader surface",
+    title: "Library and reader",
     body:
-      "Review ingested sources and normalized pages in a layout designed for dense technical reading, scanning, and citation-first navigation.",
+      "Review ingested sources and normalized pages in a layout designed for dense technical reading, table-of-contents navigation, and citation-first answers.",
     links: [
       { href: "/app/library", label: "Browse library" },
       { href: "/app/search", label: "Search sources" },
@@ -85,28 +84,28 @@ const articleCards = [
     icon: BookOpenText,
   },
   {
-    id: "workspace-tools",
-    eyebrow: "Workspace tools",
-    title: "Operational controls",
+    id: "imports",
+    eyebrow: "Ingestion",
+    title: "Source imports",
     body:
-      "Reach source imports and ingestion visibility from the same shell without turning the product into a generic admin dashboard.",
+      "Register local folders, book directories, or wiki exports, then watch ingestion status without turning the product into a generic control panel.",
     links: [
-      { href: "/app/settings", label: "Open settings" },
       { href: "/app/imports", label: "Open imports" },
+      { href: "/app/settings", label: "Open settings" },
     ],
     icon: Wrench,
   },
   {
     id: "recent-activity",
-    eyebrow: "Recent activity",
-    title: "Current workstreams",
+    eyebrow: "Search",
+    title: "Find the right page quickly",
     body:
-      "Use the landing page as a routing layer into current sources, current reading, and the product path that is actively being refined.",
+      "Search is a first-class way into the reader. Find the page or section you need, then continue with page-scoped AI and visible supporting passages.",
     links: [
-      { href: "/app/library", label: "Browse sources" },
+      { href: "/app/search", label: "Run search" },
       { href: "/app", label: "Open workspace" },
     ],
-    icon: FileClock,
+    icon: Search,
   },
 ];
 
@@ -205,8 +204,8 @@ export function LandingPage() {
                   <div className="text-xs uppercase tracking-[0.22em] text-[#5faa73]">Main page</div>
                   <h1 className="mt-1 text-3xl font-normal text-[#7df2a6]">United Intelligence</h1>
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-[#66c485]">
-                    A structured front page for navigating chat, search, collections, and the knowledge base, while keeping
-                    the current logo centered in the article body.
+                    A structured front page for a single product: import sources, browse them like a technical library,
+                    open a page, ask grounded questions, and inspect the citations.
                   </p>
                 </div>
 
@@ -250,11 +249,11 @@ export function LandingPage() {
                   <LogoMark size={144} />
                   <div className="mt-5 text-xl font-semibold tracking-[0.22em] text-[#00a126] sm:text-2xl">United Intelligence</div>
                   <p className="mt-4 max-w-2xl text-sm leading-7 text-[#66c485]">
-                    This front page uses persistent navigation, article tabs, contents, and utility rails around a central
-                    document surface.
+                    A reader-first knowledge engine for technical and mathematical sources, designed around page reading,
+                    search, and cited explanations.
                   </p>
                   <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm">
-                    <QuickLink href="/app/chat" icon={Sparkles} label="Start a chat" />
+                    <QuickLink href="/app/imports" icon={FileClock} label="Import source" />
                     <QuickLink href="/app/search" icon={Search} label="Search sources" />
                     <QuickLink href="/app/library" icon={BookOpenText} label="Open library" />
                   </div>

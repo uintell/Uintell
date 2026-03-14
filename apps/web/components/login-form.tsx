@@ -10,9 +10,9 @@ export function LoginForm() {
   const router = useRouter();
   const { login, register } = useAuth();
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [email, setEmail] = useState("admin@uintell.org");
-  const [password, setPassword] = useState("ChangeMeNow123!");
-  const [displayName, setDisplayName] = useState("Admin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -26,7 +26,7 @@ export function LoginForm() {
       } else {
         await register(email, password, displayName);
       }
-      router.push("/app/chat");
+      router.push("/app");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Authentication failed");
     } finally {
@@ -47,7 +47,7 @@ export function LoginForm() {
           </div>
         </div>
         <h1 className="mt-4 text-3xl font-semibold">{mode === "login" ? "Welcome back" : "Create an account"}</h1>
-        <p className="mt-2 text-sm text-muted">Session cookies stay server-issued; the frontend never stores auth tokens.</p>
+        <p className="mt-2 text-sm text-muted">Session cookies stay server-issued. The app does not ship seeded credentials in the UI.</p>
 
         <div className="mt-8 space-y-4">
           {mode === "register" ? (

@@ -27,32 +27,6 @@ export interface SupportingPassage {
   score: number;
 }
 
-export interface ChatMessage {
-  id: string;
-  role: string;
-  content: string;
-  citations: {
-    items?: Citation[];
-  };
-  provider_name?: string | null;
-  model_name?: string | null;
-  created_at: string;
-}
-
-export interface ConversationSummary {
-  id: string;
-  title: string;
-  updated_at: string;
-  message_count: number;
-}
-
-export interface ConversationDetail {
-  id: string;
-  title: string;
-  updated_at: string;
-  messages: ChatMessage[];
-}
-
 export interface SearchResult {
   chunk_id: string;
   document_id: string;
@@ -60,9 +34,9 @@ export interface SearchResult {
   document_slug?: string | null;
   section_title?: string | null;
   source_type: string;
-   document_kind?: string | null;
-   summary?: string | null;
-   tags: string[];
+  document_kind?: string | null;
+  summary?: string | null;
+  tags: string[];
   path_or_url?: string | null;
   excerpt: string;
   score: number;
@@ -149,39 +123,6 @@ export interface PageAnswer {
   model_name: string;
 }
 
-export interface NoteRecord {
-  id: string;
-  title: string;
-  slug: string;
-  content_markdown: string;
-  content_html?: string | null;
-  plain_text?: string | null;
-  tags: string[];
-  linked_document_id?: string | null;
-  metadata: Record<string, unknown>;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CollectionItemRecord {
-  id: string;
-  document_id?: string | null;
-  note_id?: string | null;
-  sort_order: number;
-  created_at: string;
-}
-
-export interface CollectionRecord {
-  id: string;
-  title: string;
-  slug: string;
-  description?: string | null;
-  metadata: Record<string, unknown>;
-  items: CollectionItemRecord[];
-  created_at: string;
-  updated_at: string;
-}
-
 export interface IngestionJob {
   id: string;
   workflow_id?: string | null;
@@ -210,7 +151,7 @@ export interface SourceProfile {
   limit?: number;
 }
 
-export interface AdminStats {
+export interface ImportStats {
   documents_by_source: Array<{ source_type: string; count: number }>;
   documents_by_indexing_status: Array<{ status: string; count: number }>;
 }

@@ -29,7 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#020704] px-6 text-center text-[#7df2a6]">
         <h1 className="text-3xl font-semibold">Authentication required</h1>
-        <p className="mt-3 max-w-md text-sm text-[#5faa73]">Sign in to access conversations, documents, and admin controls.</p>
+        <p className="mt-3 max-w-md text-sm text-[#5faa73]">Sign in to access the library, source imports, search, and page-scoped AI.</p>
         <button
           onClick={() => router.push("/login")}
           className="mt-6 rounded-full bg-[#4d8dff] px-5 py-3 font-medium text-[#020704] transition hover:bg-[#7aaaff]"

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +11,7 @@ from app.repositories.documents import DocumentRepository
 from app.schemas.documents import IngestSourceRequest, IngestionJobResponse
 from app.services.container import ServiceContainer
 
-router = APIRouter(prefix="/v1/admin", tags=["admin"])
+router = APIRouter(prefix="/v1/imports", tags=["imports"])
 
 
 @router.get("/jobs", response_model=list[IngestionJobResponse])

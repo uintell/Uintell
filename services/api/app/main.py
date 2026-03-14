@@ -12,7 +12,7 @@ from qdrant_client import AsyncQdrantClient
 from redis.asyncio import Redis
 from temporalio.client import Client
 
-from app.api.routes import admin, auth, chat, collections, documents, health, notes, retrieval, settings as settings_routes
+from app.api.routes import auth, chat, collections, documents, health, imports, notes, retrieval, settings as settings_routes
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.session import build_engine, build_session_factory
@@ -178,7 +178,7 @@ app.include_router(documents.router)
 app.include_router(notes.router)
 app.include_router(collections.router)
 app.include_router(settings_routes.router)
-app.include_router(admin.router)
+app.include_router(imports.router)
 
 
 @app.middleware("http")

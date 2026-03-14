@@ -32,6 +32,7 @@ These surfaces are no longer treated as the primary product:
 - collections as a first-class product surface
 - notes/pages as a competing product line
 - multi-architecture README positioning
+- the old `/app/chat`, `/app/collections`, and `/app/notes` workspaces
 
 ## Minimal Required Local Services
 
@@ -100,8 +101,9 @@ These should be optional for advanced setups, not required for the main product 
 - [x] Library page emphasizes sources and documents, not generic workspace cards
 - [x] Source detail page exists and is useful
 - [x] Reader page includes ask-page AI and evidence
-- [ ] Search is fast, readable, and citation-oriented
+- [x] Search is fast, readable, and citation-oriented
 - [x] Ingestion status is visible without turning the app into an admin dashboard
+- [x] Frozen routes point users back to the active reader flow instead of acting like live product areas
 
 ## Implementation Milestones
 
@@ -117,5 +119,5 @@ These should be optional for advanced setups, not required for the main product 
 ## Verification Notes
 
 - `docker compose config --services` now resolves to `postgres`, `qdrant`, `api`, and `web` by default
-- `npm --workspace apps/web run build` passes, including the new source-detail and imports routes
+- `npm --workspace apps/web run build` passes, including the focused search/imports surfaces and frozen-route notices
 - `find services/api/app services/worker/worker_app packages/ai/src/knowledge_engine -name '*.py' -print0 | xargs -0 python3 -m py_compile` passes

@@ -30,7 +30,7 @@ export function DashboardWorkspace() {
       const [sourcesResult, documentsResult, jobsResult] = await Promise.allSettled([
         api.listSources({ limit: 8 }),
         api.listDocuments({ limit: 6 }),
-        api.listJobs(),
+        api.listImportJobs(),
       ]);
 
       if (!active) {
@@ -109,7 +109,7 @@ export function DashboardWorkspace() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Sources</div>
-              <h2 className="mt-2 text-2xl font-semibold text-[#7df2a6]">Knowledge collections</h2>
+              <h2 className="mt-2 text-2xl font-semibold text-[#7df2a6]">Library sources</h2>
             </div>
             <Link href="/app/library" className="rounded-full border border-[#12311d] px-4 py-2 text-sm text-[#4d8dff] transition hover:border-[#4d8dff] hover:text-[#7aaaff]">
               View library

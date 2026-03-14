@@ -84,7 +84,7 @@ class Settings(BaseSettings):
     otel_service_name: str = "uintell-api"
 
     seed_admin_email: str = "admin@uintell.org"
-    seed_admin_password: str = "ChangeMeNow123!"
+    seed_admin_password: str = "set-me-in-local-env"
 
     @field_validator(
         "redis_url",

@@ -28,6 +28,12 @@ Primary pages:
 - imports
 - settings
 
+Frozen pages still present only as compatibility notices:
+
+- chat
+- collections
+- notes
+
 ### `services/api`
 
 Primary API built with:
@@ -44,6 +50,8 @@ The API owns:
 - retrieval
 - page-scoped grounded answers
 - authentication/session handling
+
+The current user-facing ingestion API is exposed under `/v1/imports/*`. Legacy chat, notes, and collections APIs remain in the repo as frozen compatibility surfaces, not as the primary product path.
 
 ### `packages/ai`
 

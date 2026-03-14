@@ -46,6 +46,9 @@ These paths are frozen except for migration support, compatibility work, or crit
 - `apps/backend`
 - `apps/frontend`
 - `legacy/uintell-site`
+- `/app/chat`
+- `/app/collections`
+- `/app/notes`
 
 The active product path is the Python/Next stack under:
 

@@ -1,12 +1,8 @@
 import type {
-  AdminStats,
-  CollectionRecord,
-  ConversationDetail,
-  ConversationSummary,
   DocumentDetail,
   DocumentRecord,
+  ImportStats,
   IngestionJob,
-  NoteRecord,
   PageAnswer,
   SearchResponse,
   SourceDetail,
@@ -89,8 +85,6 @@ export const api = {
   register: (payload: { email: string; password: string; display_name: string }) =>
     request<User>("/v1/auth/register", { method: "POST", body: JSON.stringify(payload) }),
   logout: () => request<{ ok: boolean }>("/v1/auth/logout", { method: "POST", body: "{}" }),
-  listConversations: () => request<ConversationSummary[]>("/v1/conversations"),
-  getConversation: (conversationId: string) => request<ConversationDetail>(`/v1/conversations/${conversationId}`),
   search: (payload: { query: string; mode?: string; source_types?: string[]; tags?: string[]; limit?: number }) =>
     request<SearchResponse>("/v1/retrieval/search", { method: "POST", body: JSON.stringify(payload) }),
   listDocuments: (filters?: {
@@ -145,9 +139,9 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ values }),
     }),
-  listJobs: () => request<IngestionJob[]>("/v1/admin/jobs"),
-  stats: () => request<AdminStats>("/v1/admin/stats"),
-  triggerIngest: (payload: {
+  listImportJobs: () => request<IngestionJob[]>("/v1/imports/jobs"),
+  getImportStats: () => request<ImportStats>("/v1/imports/stats"),
+  triggerImport: (payload: {
     profile_id?: string;
     source_type?: string;
     source_name?: string;
@@ -157,38 +151,7 @@ export const api = {
     metadata?: Record<string, unknown>;
     limit?: number;
   }) =>
-    request<IngestionJob>("/v1/admin/ingest", { method: "POST", body: JSON.stringify(payload) }),
-  listNotes: () => request<NoteRecord[]>("/v1/notes"),
-  createNote: (payload: {
-    title: string;
-    content_markdown: string;
-    tags?: string[];
-    linked_document_id?: string | null;
-    metadata?: Record<string, unknown>;
-  }) => request<NoteRecord>("/v1/notes", { method: "POST", body: JSON.stringify(payload) }),
-  getNote: (noteId: string) => request<NoteRecord>(`/v1/notes/${noteId}`),
-  getNoteBySlug: (slug: string) => request<NoteRecord>(`/v1/notes/slug/${slug}`),
-  updateNote: (noteId: string, payload: {
-    title: string;
-    content_markdown: string;
-    tags?: string[];
-    linked_document_id?: string | null;
-    metadata?: Record<string, unknown>;
-  }) => request<NoteRecord>(`/v1/notes/${noteId}`, { method: "PUT", body: JSON.stringify(payload) }),
-  deleteNote: (noteId: string) => request<void>(`/v1/notes/${noteId}`, { method: "DELETE" }),
-  listCollections: () => request<CollectionRecord[]>("/v1/collections"),
-  createCollection: (payload: { title: string; description?: string | null; metadata?: Record<string, unknown> }) =>
-    request<CollectionRecord>("/v1/collections", { method: "POST", body: JSON.stringify(payload) }),
-  updateCollection: (collectionId: string, payload: { title: string; description?: string | null; metadata?: Record<string, unknown> }) =>
-    request<CollectionRecord>(`/v1/collections/${collectionId}`, { method: "PUT", body: JSON.stringify(payload) }),
-  deleteCollection: (collectionId: string) => request<void>(`/v1/collections/${collectionId}`, { method: "DELETE" }),
-  addCollectionItem: (collectionId: string, payload: { document_id?: string | null; note_id?: string | null; sort_order?: number }) =>
-    request<{ id: string; document_id?: string | null; note_id?: string | null; sort_order: number; created_at: string }>(
-      `/v1/collections/${collectionId}/items`,
-      { method: "POST", body: JSON.stringify(payload) },
-    ),
-  removeCollectionItem: (collectionId: string, itemId: string) =>
-    request<void>(`/v1/collections/${collectionId}/items/${itemId}`, { method: "DELETE" }),
+    request<IngestionJob>("/v1/imports/ingest", { method: "POST", body: JSON.stringify(payload) }),
 };
 
 export function readSourceProfiles(values: Record<string, unknown>): SourceProfile[] {
@@ -207,53 +170,4 @@ export function readSourceProfiles(values: Record<string, unknown>): SourceProfi
     const candidate = profile as Partial<SourceProfile>;
     return Boolean(candidate.id && candidate.label && candidate.source_type && candidate.source_name && candidate.target_path);
   });
-}
-
-export async function streamChat(
-  payload: { conversation_id?: string | null; message: string; source_types?: string[]; use_tools?: boolean },
-  onEvent: (event: string, data: Record<string, unknown>) => void,
-): Promise<void> {
-  const response = await fetch(`${resolveApiBase()}/v1/chat/stream`, {
-    method: "POST",
-    credentials: "include",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok || !response.body) {
-    throw new Error(`Stream failed: ${response.status}`);
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let currentEvent = "message";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) {
-      break;
-    }
-    buffer += decoder.decode(value, { stream: true });
-    const segments = buffer.split("\n\n");
-    buffer = segments.pop() ?? "";
-    for (const segment of segments) {
-      const lines = segment.split("\n");
-      let dataLine = "";
-      for (const line of lines) {
-        if (line.startsWith("event: ")) {
-          currentEvent = line.slice(7);
-        }
-        if (line.startsWith("data: ")) {
-          dataLine += line.slice(6);
-        }
-      }
-      if (!dataLine) {
-        continue;
-      }
-      onEvent(currentEvent, JSON.parse(dataLine));
-    }
-  }
 }
