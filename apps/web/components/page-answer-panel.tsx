@@ -14,9 +14,10 @@ export function PageAnswerPanel({ document }: { document: DocumentDetail }) {
   const [loading, setLoading] = useState(false);
 
   const citationMap = useMemo(() => new Map(answer?.citations.map((item) => [item.label, item]) ?? []), [answer]);
+  const suggestedQuestions = useMemo(() => buildQuestionSuggestions(document), [document]);
 
-  async function askPage() {
-    const trimmed = question.trim();
+  async function askPage(nextQuestion?: string) {
+    const trimmed = (nextQuestion ?? question).trim();
     if (trimmed.length < 2) {
       return;
     }
@@ -25,6 +26,7 @@ export function PageAnswerPanel({ document }: { document: DocumentDetail }) {
     setError(null);
     try {
       const response = await api.answerDocument(document.id, { question: trimmed, mode: "hybrid" });
+      setQuestion(trimmed);
       setAnswer(response);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate answer");
@@ -51,6 +53,12 @@ export function PageAnswerPanel({ document }: { document: DocumentDetail }) {
         <textarea
           value={question}
           onChange={(event) => setQuestion(event.target.value)}
+          onKeyDown={(event) => {
+            if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+              event.preventDefault();
+              void askPage();
+            }
+          }}
           rows={3}
           className="w-full resize-y rounded-2xl border border-[#12311d] bg-[#030806] px-4 py-3 text-sm leading-7 text-[#7df2a6] outline-none transition placeholder:text-[#4e7960] focus:border-[#4d8dff]"
           placeholder="Ask a narrow question about the current page."
@@ -64,7 +72,19 @@ export function PageAnswerPanel({ document }: { document: DocumentDetail }) {
           >
             {loading ? "Answering..." : "Ask this page"}
           </button>
-          <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Citations stay visible with the answer</div>
+          <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Cmd/Ctrl + Enter</div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {suggestedQuestions.map((prompt) => (
+            <button
+              key={prompt}
+              type="button"
+              onClick={() => setQuestion(prompt)}
+              className="rounded-full border border-[#12311d] bg-[#050b08] px-3 py-1.5 text-xs text-[#66c485] transition hover:border-[#4d8dff] hover:text-[#7aaaff]"
+            >
+              {prompt}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -75,12 +95,20 @@ export function PageAnswerPanel({ document }: { document: DocumentDetail }) {
           <div className="border border-[#12311d] bg-[#050b08] p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Answer</div>
-              <div className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#4d8dff]">
-                {answer.scope_used === "page" ? "Current page only" : answer.scope_used.replaceAll("_", " ")}
+              <div className="flex flex-wrap gap-2">
+                <div className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#4d8dff]">{formatScope(answer.scope_used)}</div>
+                <div className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#66c485]">
+                  {answer.supporting_passages.length} evidence passages
+                </div>
               </div>
             </div>
-            <div className="mt-4 text-sm leading-8 text-[#7df2a6]">
-              <AnswerText answer={answer.answer} citations={citationMap} />
+            <div className="mt-3 flex flex-wrap gap-3 text-xs uppercase tracking-[0.18em] text-[#5faa73]">
+              <span>{answer.provider_name}</span>
+              <span>{answer.model_name}</span>
+              <span>{answer.citations.length} citations</span>
+            </div>
+            <div className="mt-4 border-l border-[#12311d] pl-4">
+              <AnswerBody answer={answer.answer} citations={citationMap} />
             </div>
             {answer.citations.length === 0 ? (
               <div className="mt-4 border border-dashed border-[#12311d] p-3 text-sm text-[#5faa73]">
@@ -96,9 +124,15 @@ export function PageAnswerPanel({ document }: { document: DocumentDetail }) {
                 {answer.citations.length === 0 ? <div className="text-sm text-[#5faa73]">No citations returned.</div> : null}
                 {answer.citations.map((citation) => {
                   const href = buildDocumentHref(citation.document_slug, citation.section_title);
+                  const isCurrentPage = citation.document_slug === document.slug;
                   return (
                     <div key={citation.label} id={`citation-${citation.label}`} className="border border-[#12311d] bg-[#08110d] p-3">
-                      <div className="text-xs uppercase tracking-[0.18em] text-[#4d8dff]">{citation.label}</div>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-xs uppercase tracking-[0.18em] text-[#4d8dff]">{citation.label}</div>
+                        <span className="rounded-full border border-[#12311d] px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-[#66c485]">
+                          {isCurrentPage ? "This page" : "Same source"}
+                        </span>
+                      </div>
                       <div className="mt-2 text-sm font-medium text-[#7df2a6]">{citation.title}</div>
                       <div className="mt-1 text-xs text-[#66c485]">
                         {citation.source_name} · {citation.section_title}
@@ -120,11 +154,17 @@ export function PageAnswerPanel({ document }: { document: DocumentDetail }) {
                 {answer.supporting_passages.length === 0 ? <div className="text-sm text-[#5faa73]">No passages returned.</div> : null}
                 {answer.supporting_passages.map((passage) => {
                   const href = buildDocumentHref(passage.document_slug, passage.section_title);
+                  const isCurrentPage = passage.document_id === document.id;
                   return (
                     <div key={`${passage.label}-${passage.document_id}`} className="border border-[#12311d] bg-[#08110d] p-3">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="text-xs uppercase tracking-[0.18em] text-[#4d8dff]">{passage.label}</div>
-                        <div className="text-xs text-[#66c485]">{passage.section_title ?? "Overview"}</div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="text-xs text-[#66c485]">{passage.section_title ?? "Overview"}</div>
+                          <span className="rounded-full border border-[#12311d] px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-[#66c485]">
+                            {isCurrentPage ? "This page" : "Same source"}
+                          </span>
+                        </div>
                       </div>
                       <div className="mt-2 text-sm font-medium text-[#7df2a6]">{passage.title}</div>
                       <div className="mt-1 text-xs text-[#66c485]">{passage.source_name}</div>
@@ -146,7 +186,39 @@ export function PageAnswerPanel({ document }: { document: DocumentDetail }) {
   );
 }
 
-function AnswerText({
+function AnswerBody({
+  answer,
+  citations,
+}: {
+  answer: string;
+  citations: Map<string, Citation>;
+}) {
+  const lines = answer
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return (
+    <div className="space-y-4 text-sm leading-8 text-[#7df2a6]">
+      {lines.map((line, index) =>
+        line.startsWith("- ") ? (
+          <div key={`${index}-${line.slice(0, 16)}`} className="flex gap-3">
+            <span className="mt-2 h-1.5 w-1.5 rounded-full bg-[#4d8dff]" />
+            <span>
+              <InlineAnswerText answer={line.slice(2)} citations={citations} />
+            </span>
+          </div>
+        ) : (
+          <p key={`${index}-${line.slice(0, 16)}`}>
+            <InlineAnswerText answer={line} citations={citations} />
+          </p>
+        ),
+      )}
+    </div>
+  );
+}
+
+function InlineAnswerText({
   answer,
   citations,
 }: {
@@ -186,4 +258,35 @@ function AnswerText({
       })}
     </>
   );
+}
+
+function formatScope(scope: string): string {
+  if (scope === "page") {
+    return "Current page only";
+  }
+  if (scope === "page_then_source") {
+    return "Broadened to source";
+  }
+  if (scope === "no_evidence") {
+    return "Evidence too weak";
+  }
+  return scope.replaceAll("_", " ");
+}
+
+function buildQuestionSuggestions(document: DocumentDetail): string[] {
+  const prompts = [
+    `Summarize the main idea of ${document.title}.`,
+    `What are the key technical points on this page?`,
+    `Which parts of this page matter most in practice?`,
+  ];
+
+  if (document.document_kind === "book" || document.document_kind === "article") {
+    prompts.push("What argument or explanation is this page making?");
+  }
+
+  if (document.document_kind === "note" || document.source_type === "filesystem") {
+    prompts.push("Turn this page into a concise study note.");
+  }
+
+  return prompts.slice(0, 4);
 }

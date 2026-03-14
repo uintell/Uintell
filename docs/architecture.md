@@ -67,6 +67,12 @@ Section anchors come from normalized section metadata, and the reader uses them 
 - search result section jumps
 - cited answer links back into the page
 
+The article shell keeps reading central:
+
+- the body stays on a constrained reading measure
+- page metadata stays visible without turning into dashboard chrome
+- backlinks and related pages stay adjacent to the page instead of becoming a separate tool view
+
 ### `packages/ai`
 
 Shared parsing and retrieval helpers for:
@@ -102,6 +108,13 @@ Default retrieval path:
 
 Search results expose source context plus jump-to-page and jump-to-section behavior directly in the web UI.
 
+The active search experience now emphasizes:
+
+- exact and near-exact title matches
+- section-title relevance
+- query-centered excerpts instead of raw chunk prefixes
+- source labels that make navigation trust easier
+
 Meilisearch is optional and should not be treated as a required default.
 
 ## Answering Model
@@ -112,6 +125,8 @@ Reader answers should be page-scoped first:
 2. widen to the current source only if needed
 3. generate an answer from retrieved evidence
 4. return citations and supporting passages explicitly
+
+The web reader keeps answer text and evidence visibly separate so the system reads like a research assistant, not a freeform chat box.
 
 The default provider path remains deterministic and offline-friendly, with optional Ollama or OpenAI providers layered on top of the same evidence bundle.
 

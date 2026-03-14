@@ -62,9 +62,9 @@ Important:
 3. Open `Imports`.
 4. Register a local source path.
 5. Run ingestion.
-6. Open `Library`.
+6. Open `Library` or a source detail page.
 7. Open a page in the reader.
-8. Use `Ask this page`.
+8. Use `Ask this page`, inspect citations, and jump into supporting passages.
 
 ## Demo Data
 

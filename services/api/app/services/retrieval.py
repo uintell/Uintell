@@ -14,6 +14,7 @@ from knowledge_engine.embeddings import EmbeddingProvider
 from knowledge_engine.models import RetrievedChunk
 
 QUERY_TOKEN_RE = re.compile(r"[a-z0-9]{2,}")
+NORMALIZE_TEXT_RE = re.compile(r"[^a-z0-9]+")
 QUERY_STOPWORDS = {
     "a",
     "about",
@@ -166,11 +167,18 @@ class RetrievalService:
             document_ids=document_ids,
             tags=tags,
         )
-        return _filter_supported_chunks(
+        supported = _filter_supported_chunks(
             chunks,
             query=query,
             keyword_ids=set(keyword_ids),
             semantic_scores=semantic_scores,
+        )
+        return _rerank_chunks(
+            supported,
+            query=query,
+            keyword_ids=set(keyword_ids),
+            diversify=document_ids is None,
+            limit=limit,
         )
 
     async def _semantic_search(
@@ -225,6 +233,56 @@ def _filter_supported_chunks(
     return supported
 
 
+def _rerank_chunks(
+    chunks: Sequence[RetrievedChunk],
+    *,
+    query: str,
+    keyword_ids: set[str],
+    diversify: bool,
+    limit: int,
+) -> list[RetrievedChunk]:
+    normalized_query = _normalize_text(query)
+    query_terms = _query_terms(query)
+    ranked: list[tuple[float, int, RetrievedChunk]] = []
+
+    for position, chunk in enumerate(chunks):
+        score = 0.0
+        score += _field_match_score(chunk.article_title, normalized_query=normalized_query, query_terms=query_terms) * 6.0
+        score += _field_match_score(chunk.section_title or "", normalized_query=normalized_query, query_terms=query_terms) * 3.0
+        score += _field_match_score(chunk.content[:900], normalized_query=normalized_query, query_terms=query_terms)
+        if chunk.chunk_id in keyword_ids:
+            score += 42.0
+        score += min(max(chunk.score, 0.0), 1.0) * 28.0
+        ranked.append((score, -position, chunk))
+
+    ranked.sort(reverse=True)
+
+    ordered: list[RetrievedChunk] = []
+    seen_chunks: set[str] = set()
+    per_document: defaultdict[str, int] = defaultdict(int)
+
+    for _, _, chunk in ranked:
+        if chunk.chunk_id in seen_chunks:
+            continue
+        if diversify and per_document[chunk.document_id] >= 2:
+            continue
+        seen_chunks.add(chunk.chunk_id)
+        per_document[chunk.document_id] += 1
+        ordered.append(chunk)
+        if len(ordered) >= limit:
+            return ordered
+
+    for _, _, chunk in ranked:
+        if chunk.chunk_id in seen_chunks:
+            continue
+        seen_chunks.add(chunk.chunk_id)
+        ordered.append(chunk)
+        if len(ordered) >= limit:
+            break
+
+    return ordered
+
+
 def _chunk_supports_query(chunk: RetrievedChunk, *, query_terms: Sequence[str], keyword_matched: bool) -> bool:
     if keyword_matched:
         return True
@@ -256,3 +314,29 @@ def _haystack_mentions_term(haystack: str, term: str) -> bool:
         return False
     prefix = term[:4]
     return re.search(rf"\b{re.escape(prefix)}[a-z0-9_-]*\b", haystack) is not None
+
+
+def _field_match_score(text: str, *, normalized_query: str, query_terms: Sequence[str]) -> float:
+    if not text:
+        return 0.0
+
+    normalized_text = _normalize_text(text)
+    if not normalized_text:
+        return 0.0
+
+    score = 0.0
+    if normalized_query:
+        if normalized_text == normalized_query:
+            score += 120.0
+        elif normalized_text.startswith(normalized_query):
+            score += 84.0
+        elif f" {normalized_query} " in f" {normalized_text} ":
+            score += 62.0
+
+    matched_terms = sum(1 for term in query_terms if _haystack_mentions_term(normalized_text, term))
+    score += matched_terms * 12.0
+    return score
+
+
+def _normalize_text(value: str) -> str:
+    return NORMALIZE_TEXT_RE.sub(" ", value.lower()).strip()

@@ -1,5 +1,7 @@
 # Next Sprint Plan
 
+Superseded by [docs/next-level-plan.md](/home/x1/projectx/docs/next-level-plan.md). Keep this file only as prior sprint context.
+
 ## Product Flow
 
 Uintell stays focused on one loop:

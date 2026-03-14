@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,6 +10,7 @@ from app.schemas.chat import SearchRequest, SearchResponse, SearchResult
 from app.services.container import ServiceContainer
 
 router = APIRouter(prefix="/v1/retrieval", tags=["retrieval"])
+QUERY_TOKEN_RE = re.compile(r"[a-z0-9]{2,}")
 
 
 @router.post("/search", response_model=SearchResponse)
@@ -40,9 +43,38 @@ async def search(
                 summary=item.document_summary,
                 tags=item.tags,
                 path_or_url=item.path_or_url,
-                excerpt=item.content[:500],
+                excerpt=_build_excerpt(item.content, payload.query),
                 score=item.score,
             )
             for item in results
         ]
     )
+
+
+def _build_excerpt(content: str, query: str, *, window: int = 280) -> str:
+    compact = " ".join(content.split())
+    if len(compact) <= window:
+        return compact
+
+    haystack = compact.lower()
+    match_index = -1
+    for token in QUERY_TOKEN_RE.findall(query.lower()):
+        candidate = haystack.find(token)
+        if candidate >= 0 and (match_index < 0 or candidate < match_index):
+            match_index = candidate
+
+    if match_index < 0:
+        snippet = compact[: window - 3].rstrip()
+        return f"{snippet}..."
+
+    half_window = window // 2
+    start = max(0, match_index - half_window + 24)
+    end = min(len(compact), start + window)
+    start = max(0, end - window)
+    snippet = compact[start:end].strip()
+
+    if start > 0:
+        snippet = f"...{snippet}"
+    if end < len(compact):
+        snippet = f"{snippet}..."
+    return snippet

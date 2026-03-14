@@ -2,8 +2,8 @@
 
 import type { SearchResult } from "@uintell/shared/contracts";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useDeferredValue, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { startTransition, useDeferredValue, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
 import { buildDocumentHref } from "@/lib/reader-links";
@@ -18,6 +18,8 @@ const SOURCE_FILTERS = [
 ];
 
 export function SearchWorkspace() {
+  const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [sourceType, setSourceType] = useState<string | null>(null);
@@ -29,8 +31,37 @@ export function SearchWorkspace() {
 
   useEffect(() => {
     const nextQuery = searchParams.get("q")?.trim() ?? "";
+    const nextSourceType = searchParams.get("source")?.trim() || null;
     setQuery((current) => (current === nextQuery ? current : nextQuery));
+    setSourceType((current) => (current === nextSourceType ? current : nextSourceType));
   }, [searchParams]);
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+    const currentQuery = searchParams.get("q")?.trim() ?? "";
+    const currentSource = searchParams.get("source")?.trim() || null;
+
+    if (deferredQuery) {
+      nextParams.set("q", deferredQuery);
+    } else {
+      nextParams.delete("q");
+    }
+
+    if (sourceType) {
+      nextParams.set("source", sourceType);
+    } else {
+      nextParams.delete("source");
+    }
+
+    if (currentQuery === deferredQuery && currentSource === sourceType) {
+      return;
+    }
+
+    const nextUrl = nextParams.toString() ? `${pathname}?${nextParams.toString()}` : pathname;
+    startTransition(() => {
+      router.replace(nextUrl, { scroll: false });
+    });
+  }, [deferredQuery, pathname, router, searchParams, sourceType]);
 
   async function runSearch(searchTerm: string) {
     if (searchTerm.length < 2) {
@@ -121,64 +152,104 @@ export function SearchWorkspace() {
       {error ? <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">{error}</div> : null}
 
       <div className="grid gap-4">
-        <div className="text-sm text-[#66c485]">
-          {loading
-            ? "Searching..."
-            : deferredQuery.length < 2
-              ? "Type at least two characters to search."
-              : `${results.length} results via ${responseMode}`}
+        <div className="flex flex-wrap items-center justify-between gap-3 border border-[#12311d] bg-[#050b08] px-4 py-3 text-sm text-[#66c485]">
+          <div>
+            {loading
+              ? "Searching..."
+              : deferredQuery.length < 2
+                ? "Type at least two characters to search."
+                : `${results.length} results via ${responseMode}`}
+          </div>
+          {deferredQuery.length >= 2 ? (
+            <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">
+              {sourceType ? `Filtered to ${sourceType}` : "Across all sources"}
+            </div>
+          ) : null}
         </div>
-        {results.length === 0 && deferredQuery.length >= 2 && !loading ? (
-          <div className="border border-dashed border-[#12311d] p-8 text-sm text-[#5faa73]">No results matched this query.</div>
+        {deferredQuery.length < 2 && !loading ? (
+          <div className="border border-dashed border-[#12311d] bg-[#050b08] p-8 text-sm text-[#66c485]">
+            Search works best for page titles, section names, exact technical phrases, and concrete implementation details.
+          </div>
         ) : null}
+        {results.length === 0 && deferredQuery.length >= 2 && !loading ? (
+          <div className="border border-dashed border-[#12311d] bg-[#050b08] p-8 text-sm text-[#5faa73]">
+            No results matched this query. Try a page title, a section name, or a more specific technical phrase.
+          </div>
+        ) : null}
+        {loading
+          ? Array.from({ length: Math.max(2, Math.min(4, results.length || 3)) }).map((_, index) => (
+              <article key={`loading-${index}`} className="border border-[#12311d] bg-[#050b08] p-5">
+                <div className="h-5 w-32 animate-pulse bg-[#08110d]" />
+                <div className="mt-4 h-8 w-2/3 animate-pulse bg-[#08110d]" />
+                <div className="mt-3 h-4 w-40 animate-pulse bg-[#08110d]" />
+                <div className="mt-4 space-y-2">
+                  <div className="h-4 w-full animate-pulse bg-[#08110d]" />
+                  <div className="h-4 w-5/6 animate-pulse bg-[#08110d]" />
+                </div>
+              </article>
+            ))
+          : null}
         {results.map((result) => {
           const sectionHref = buildDocumentHref(result.document_slug, result.section_title);
+          const titleMatch = queryMatchesTitle(result.title, deferredQuery);
+          const sectionMatch = queryMatchesTitle(result.section_title ?? "", deferredQuery);
 
           return (
             <article key={result.chunk_id} className="border border-[#12311d] bg-[#050b08] p-5">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#5faa73]">{result.source_type}</div>
-              {result.document_kind ? (
-                <div className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#4d8dff]">{result.document_kind}</div>
-              ) : null}
-              <div className="text-xs uppercase tracking-[0.18em] text-[#4d8dff]">{result.section_title ?? "Overview"}</div>
-            </div>
-            <h2 className="mt-3 text-xl font-medium text-[#7df2a6]">
-              {result.document_slug ? (
-                <Link href={`/app/library/${result.document_slug}`} className="transition hover:text-[#7aaaff]">
-                  <HighlightedText text={result.title} query={deferredQuery} />
-                </Link>
-              ) : (
-                <HighlightedText text={result.title} query={deferredQuery} />
-              )}
-            </h2>
-            <div className="mt-2 text-sm text-[#5faa73]">{result.source_name}</div>
-            {result.summary ? <div className="mt-3 text-sm text-[#66c485]">{result.summary}</div> : null}
-            <p className="mt-3 text-sm leading-7 text-[#66c485]">
-              <HighlightedText text={result.excerpt} query={deferredQuery} />
-            </p>
-            {result.tags.length ? (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {result.tags.slice(0, 4).map((tag) => (
-                  <span key={tag} className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#5faa73]">
-                    {tag}
-                  </span>
-                ))}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#5faa73]">{result.source_type}</div>
+                {result.document_kind ? (
+                  <div className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#4d8dff]">{result.document_kind}</div>
+                ) : null}
+                <div className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#66c485]">{result.source_name}</div>
+                {titleMatch ? <div className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#4d8dff]">Title match</div> : null}
+                {!titleMatch && sectionMatch ? (
+                  <div className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#4d8dff]">Section match</div>
+                ) : null}
               </div>
-            ) : null}
-            <div className="mt-4 flex flex-wrap gap-3">
-              {result.document_slug ? <Link href={`/app/library/${result.document_slug}`} className="text-sm text-[#4d8dff] hover:text-[#7aaaff]">Open page</Link> : null}
-              {sectionHref ? (
-                <Link href={sectionHref} className="text-sm text-[#4d8dff] hover:text-[#7aaaff]">
-                  Jump to section
-                </Link>
+              <h2 className="mt-4 text-2xl font-medium text-[#7df2a6]">
+                {result.document_slug ? (
+                  <Link href={`/app/library/${result.document_slug}`} className="transition hover:text-[#7aaaff]">
+                    <HighlightedText text={result.title} query={deferredQuery} />
+                  </Link>
+                ) : (
+                  <HighlightedText text={result.title} query={deferredQuery} />
+                )}
+              </h2>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em] text-[#5faa73]">
+                <span>{result.section_title ?? "Overview"}</span>
+                {result.score > 0 ? <span>semantic {result.score.toFixed(2)}</span> : null}
+              </div>
+              {result.summary ? <div className="mt-4 text-sm leading-7 text-[#66c485]">{result.summary}</div> : null}
+              <p className="mt-4 border-l border-[#12311d] pl-4 text-sm leading-7 text-[#66c485]">
+                <HighlightedText text={result.excerpt} query={deferredQuery} />
+              </p>
+              {result.tags.length ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {result.tags.slice(0, 4).map((tag) => (
+                    <span key={tag} className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#5faa73]">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
               ) : null}
-              {result.path_or_url ? (
-                <a href={result.path_or_url} target="_blank" rel="noreferrer" className="text-sm text-[#4d8dff] hover:text-[#7aaaff]">
-                  Open source
-                </a>
-              ) : null}
-            </div>
+              <div className="mt-5 flex flex-wrap gap-3">
+                {result.document_slug ? (
+                  <Link href={`/app/library/${result.document_slug}`} className="text-sm text-[#4d8dff] hover:text-[#7aaaff]">
+                    Open page
+                  </Link>
+                ) : null}
+                {sectionHref ? (
+                  <Link href={sectionHref} className="text-sm text-[#4d8dff] hover:text-[#7aaaff]">
+                    Jump to section
+                  </Link>
+                ) : null}
+                {result.path_or_url ? (
+                  <a href={result.path_or_url} target="_blank" rel="noreferrer" className="text-sm text-[#4d8dff] hover:text-[#7aaaff]">
+                    Open source
+                  </a>
+                ) : null}
+              </div>
             </article>
           );
         })}
@@ -219,4 +290,13 @@ function HighlightedText({ text, query }: { text: string; query: string }) {
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function queryMatchesTitle(text: string, query: string): boolean {
+  const normalizedText = text.trim().toLowerCase();
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedText || !normalizedQuery) {
+    return false;
+  }
+  return normalizedText === normalizedQuery || normalizedText.startsWith(normalizedQuery) || normalizedText.includes(normalizedQuery);
 }

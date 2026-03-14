@@ -1,5 +1,7 @@
 # Current System Audit
 
+Superseded by [docs/current-product-audit.md](/home/x1/projectx/docs/current-product-audit.md). Keep this file only as prior sprint context.
+
 Uintell currently has one active product loop:
 
 `import source -> browse source -> read page -> ask page -> cited answer`

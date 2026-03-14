@@ -110,7 +110,7 @@ These should be optional for advanced setups, not required for the main product 
 - [x] Inspect repo structure and identify active stack, legacy stack, and runtime clutter
 - [x] Rewrite README around the focused product identity
 - [x] Write a plain-English audit of the active system
-- [x] Add a short next-sprint plan for the focused vertical slice
+- [x] Add a short next-level plan for the focused vertical slice
 - [x] Add documentation for runtime/data separation and local development defaults
 - [x] Simplify compose/config defaults for the primary local path
 - [x] Add source-summary APIs
@@ -118,6 +118,10 @@ These should be optional for advanced setups, not required for the main product 
 - [x] Refine frontend pages around library, source detail, reader, and ingestion status
 - [x] Improve reader rendering for markdown, code, anchors, and evidence
 - [x] Improve search result presentation and section jumps
+- [x] Write a current product audit that explains the live import, browse, read, and ask flow
+- [x] Improve search ranking and excerpt quality around titles, sections, and query terms
+- [x] Improve ask-page trust signals through clearer scope and evidence presentation
+- [x] Bring library and source-detail surfaces closer to the reader-first visual system
 - [x] Verify the reduced default stack and focused UI flow at build/config level
 
 ## Verification Notes

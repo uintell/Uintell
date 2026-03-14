@@ -53,25 +53,28 @@ export function SourceDetailWorkspace({
   }, [sourceName, sourceType]);
 
   if (loading) {
-    return <div className="rounded-3xl border border-line bg-panel p-8 text-sm text-muted">Loading source…</div>;
+    return <div className="border border-[#12311d] bg-[#050b08] p-8 text-sm text-[#5faa73]">Loading source...</div>;
   }
 
   if (error || !source) {
-    return <div className="rounded-3xl border border-rose-500/30 bg-rose-500/10 p-8 text-sm text-rose-200">{error ?? "Source not found"}</div>;
+    return <div className="border border-rose-500/30 bg-rose-500/10 p-8 text-sm text-rose-200">{error ?? "Source not found"}</div>;
   }
 
   return (
     <div className="space-y-8">
-      <header className="rounded-[2rem] border border-line bg-black/20 p-6">
+      <header className="border border-[#12311d] bg-[#050b08] p-6 lg:p-8">
         <div className="flex flex-wrap items-center gap-3">
-          <Link href="/app/library" className="rounded-full border border-line px-4 py-2 text-sm text-muted hover:border-accent hover:text-accent">
+          <Link
+            href="/app/library"
+            className="rounded-full border border-[#12311d] px-4 py-2 text-sm text-[#4d8dff] hover:border-[#4d8dff] hover:text-[#7aaaff]"
+          >
             Back to library
           </Link>
-          <span className="rounded-full border border-line px-3 py-1 text-xs text-muted">{source.source_type}</span>
-          <span className="rounded-full border border-line px-3 py-1 text-xs text-accent">{source.document_count} documents</span>
+          <span className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#5faa73]">{source.source_type}</span>
+          <span className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#4d8dff]">{source.document_count} documents</span>
         </div>
-        <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white">{source.source_name}</h1>
-        <p className="mt-4 max-w-3xl text-sm leading-8 text-slate-200">
+        <h1 className="mt-5 text-4xl font-semibold tracking-tight text-[#7df2a6]">{source.source_name}</h1>
+        <p className="mt-4 max-w-3xl text-sm leading-8 text-[#66c485]">
           Browse normalized pages from this source, open any page into the reader, and ask questions grounded in the
           current page before the system broadens to the rest of the source.
         </p>
@@ -79,42 +82,58 @@ export function SourceDetailWorkspace({
 
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_300px]">
         <section className="space-y-4">
+          <div>
+            <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Documents</div>
+            <h2 className="mt-2 text-2xl font-semibold text-[#7df2a6]">Reader-ready pages</h2>
+          </div>
           {source.documents.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-line p-8 text-sm text-muted">No indexed documents are available for this source yet.</div>
+            <div className="border border-dashed border-[#12311d] p-8 text-sm text-[#5faa73]">No indexed documents are available for this source yet.</div>
           ) : null}
           {source.documents.map((document) => (
-            <article key={document.id} className="rounded-3xl border border-line bg-panel p-5">
+            <article key={document.id} className="border border-[#12311d] bg-[#050b08] p-5">
               <div className="flex flex-wrap gap-2">
                 {document.document_kind ? (
-                  <span className="rounded-full border border-line px-3 py-1 text-xs text-accent">{document.document_kind}</span>
+                  <span className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#4d8dff]">{document.document_kind}</span>
                 ) : null}
-                <span className="rounded-full border border-line px-3 py-1 text-xs text-muted">{document.indexing_status ?? document.status}</span>
+                <span className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#5faa73]">{document.indexing_status ?? document.status}</span>
               </div>
-              <h2 className="mt-4 text-2xl font-medium text-white">
+              <h2 className="mt-4 text-2xl font-medium text-[#7df2a6]">
                 {document.slug ? (
-                  <Link href={`/app/library/${document.slug}`} className="transition hover:text-accent">
+                  <Link href={`/app/library/${document.slug}`} className="transition hover:text-[#7aaaff]">
                     {document.title}
                   </Link>
                 ) : (
                   document.title
                 )}
               </h2>
-              {document.summary ? <p className="mt-3 text-sm leading-7 text-slate-200">{document.summary}</p> : null}
+              {document.summary ? <p className="mt-3 text-sm leading-7 text-[#66c485]">{document.summary}</p> : null}
               <div className="mt-4 flex flex-wrap gap-2">
                 {document.tags.slice(0, 5).map((tag) => (
-                  <span key={tag} className="rounded-full border border-line px-3 py-1 text-xs text-muted">
+                  <span key={tag} className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#5faa73]">
                     {tag}
                   </span>
                 ))}
+              </div>
+              <div className="mt-5 flex flex-wrap gap-3 text-sm">
+                {document.slug ? (
+                  <Link href={`/app/library/${document.slug}`} className="text-[#4d8dff] hover:text-[#7aaaff]">
+                    Open reader
+                  </Link>
+                ) : null}
+                {document.path_or_url ? (
+                  <a href={document.path_or_url} target="_blank" rel="noreferrer" className="text-[#66c485] hover:text-[#7aaaff]">
+                    Open source
+                  </a>
+                ) : null}
               </div>
             </article>
           ))}
         </section>
 
         <aside className="space-y-6">
-          <section className="rounded-[2rem] border border-line bg-black/20 p-5">
-            <div className="text-xs uppercase tracking-[0.18em] text-muted">Source summary</div>
-            <div className="mt-4 space-y-3 text-sm text-slate-200">
+          <section className="border border-[#12311d] bg-[#050b08] p-5">
+            <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Source summary</div>
+            <div className="mt-4 space-y-3 text-sm text-[#66c485]">
               <div>Type: {source.source_type}</div>
               <div>Documents: {source.document_count}</div>
               <div>Indexed: {source.indexed_count}</div>
@@ -122,25 +141,25 @@ export function SourceDetailWorkspace({
             </div>
           </section>
 
-          <section className="rounded-[2rem] border border-line bg-black/20 p-5">
-            <div className="text-xs uppercase tracking-[0.18em] text-muted">Content kinds</div>
+          <section className="border border-[#12311d] bg-[#050b08] p-5">
+            <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Content kinds</div>
             <div className="mt-4 flex flex-wrap gap-2">
-              {source.document_kinds.length === 0 ? <div className="text-sm text-muted">No kind metadata yet.</div> : null}
+              {source.document_kinds.length === 0 ? <div className="text-sm text-[#5faa73]">No kind metadata yet.</div> : null}
               {source.document_kinds.map((kind) => (
-                <span key={kind} className="rounded-full border border-line px-3 py-1 text-xs text-accent">
+                <span key={kind} className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#4d8dff]">
                   {kind}
                 </span>
               ))}
             </div>
           </section>
 
-          <section className="rounded-[2rem] border border-line bg-black/20 p-5">
-            <div className="text-xs uppercase tracking-[0.18em] text-muted">Next actions</div>
+          <section className="border border-[#12311d] bg-[#050b08] p-5">
+            <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Next actions</div>
             <div className="mt-4 space-y-3 text-sm">
-              <Link href="/app/search" className="block text-accent hover:text-accentStrong">
+              <Link href="/app/search" className="block text-[#4d8dff] hover:text-[#7aaaff]">
                 Search across the library
               </Link>
-              <Link href="/app/imports" className="block text-accent hover:text-accentStrong">
+              <Link href="/app/imports" className="block text-[#4d8dff] hover:text-[#7aaaff]">
                 Import another source
               </Link>
             </div>

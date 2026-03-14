@@ -1,6 +1,8 @@
 "use client";
 
 import type { DocumentDetail } from "@uintell/shared/contracts";
+import { Children, isValidElement } from "react";
+import type { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -129,6 +131,10 @@ function MarkdownBlock({ content }: { content: string }) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
+          h1: ({ children }) => <MarkdownHeading level={1}>{children}</MarkdownHeading>,
+          h2: ({ children }) => <MarkdownHeading level={2}>{children}</MarkdownHeading>,
+          h3: ({ children }) => <MarkdownHeading level={3}>{children}</MarkdownHeading>,
+          h4: ({ children }) => <MarkdownHeading level={4}>{children}</MarkdownHeading>,
           a: ({ children, href }: any) => (
             <a href={href} className="text-[#4d8dff] underline decoration-[#12311d] underline-offset-4 hover:text-[#7aaaff]">
               {children}
@@ -148,7 +154,18 @@ function MarkdownBlock({ content }: { content: string }) {
               </code>
             );
           },
-          pre: ({ children }: any) => <pre className="reader-code-shell">{children}</pre>,
+          pre: ({ children }: any) => {
+            const language = extractMarkdownLanguage(children);
+
+            return (
+              <div className="reader-code-block">
+                <div className="reader-code-bar">
+                  <span>{language ?? "code"}</span>
+                </div>
+                <pre className="reader-code-shell">{children}</pre>
+              </div>
+            );
+          },
         }}
       >
         {content}
@@ -159,9 +176,14 @@ function MarkdownBlock({ content }: { content: string }) {
 
 function CodeBlock({ content }: { content: string }) {
   return (
-    <pre className="reader-code-shell">
-      <code className="reader-code">{content}</code>
-    </pre>
+    <div className="reader-code-block">
+      <div className="reader-code-bar">
+        <span>source</span>
+      </div>
+      <pre className="reader-code-shell">
+        <code className="reader-code">{content}</code>
+      </pre>
+    </div>
   );
 }
 
@@ -231,4 +253,51 @@ function parseMarkdownSections(rawContent: string, documentTitle: string): Reade
 function getDocumentExtension(document: DocumentDetail): string | null {
   const extension = document.metadata?.extension;
   return typeof extension === "string" ? extension.toLowerCase() : null;
+}
+
+function MarkdownHeading({
+  children,
+  level,
+}: {
+  children: ReactNode;
+  level: 1 | 2 | 3 | 4;
+}) {
+  const text = flattenChildrenText(children);
+  const anchor = slugifyText(text || `section-${level}`);
+  const Tag = `h${level}` as const;
+
+  return (
+    <Tag id={anchor} className="reader-heading scroll-mt-24">
+      <a href={`#${anchor}`} className="reader-heading-link">
+        <span>{children}</span>
+      </a>
+    </Tag>
+  );
+}
+
+function flattenChildrenText(children: ReactNode): string {
+  return Children.toArray(children)
+    .map((child) => {
+      if (typeof child === "string" || typeof child === "number") {
+        return String(child);
+      }
+      if (isValidElement<{ children?: ReactNode }>(child)) {
+        return flattenChildrenText(child.props.children);
+      }
+      return "";
+    })
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractMarkdownLanguage(children: ReactNode): string | null {
+  const child = Children.toArray(children)[0];
+  if (!isValidElement<{ className?: string }>(child)) {
+    return null;
+  }
+
+  const className = child.props.className ?? "";
+  const match = className.match(/language-([\w-]+)/i) ?? className.match(/lang-([\w-]+)/i);
+  return match?.[1]?.toLowerCase() ?? null;
 }
