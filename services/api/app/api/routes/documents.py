@@ -162,6 +162,7 @@ async def answer_about_document(
                 section_title=passage.section_title,
                 excerpt=passage.excerpt,
                 source_type=passage.source_type,
+                source_name=passage.source_name,
                 path_or_url=passage.path_or_url,
                 score=passage.score,
             )

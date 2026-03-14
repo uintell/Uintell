@@ -12,6 +12,7 @@ class Citation(BaseModel):
     title: str
     section_title: str
     source_type: str
+    source_name: str
     document_slug: str = ""
     path_or_url: str = ""
 
@@ -70,6 +71,7 @@ class SearchResult(BaseModel):
     document_slug: str | None = None
     section_title: str | None
     source_type: str
+    source_name: str
     document_kind: str | None = None
     summary: str | None = None
     tags: list[str] = Field(default_factory=list)

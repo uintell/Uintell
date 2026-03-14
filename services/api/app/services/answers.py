@@ -22,6 +22,7 @@ class SupportingPassage:
     section_title: str | None
     excerpt: str
     source_type: str
+    source_name: str
     path_or_url: str | None
     score: float
 
@@ -90,6 +91,18 @@ class AnswerService:
             if source_hits:
                 scope_used = "page_then_source"
 
+        if not merged_hits:
+            provider_name = getattr(self._provider, "name", "retrieval-only")
+            model_name = getattr(self._provider, "model", getattr(self._provider, "_model", "retrieval-only"))
+            return GroundedAnswer(
+                text="I do not have enough verified evidence from this page or source to answer that yet. Try a narrower question or import more relevant material.",
+                scope_used="no_evidence",
+                citations=[],
+                passages=[],
+                provider_name=str(provider_name),
+                model_name=str(model_name),
+            )
+
         _, citations = build_citation_bundle(merged_hits)
         request = ProviderRequest(
             question=question,
@@ -114,6 +127,7 @@ class AnswerService:
                     section_title=chunk.section_title,
                     excerpt=_clip_excerpt(chunk),
                     source_type=chunk.source_type.value,
+                    source_name=chunk.source_name,
                     path_or_url=chunk.path_or_url,
                     score=chunk.score,
                 )

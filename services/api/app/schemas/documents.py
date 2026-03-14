@@ -101,6 +101,7 @@ class SupportingPassageResponse(BaseModel):
     section_title: str | None = None
     excerpt: str
     source_type: str
+    source_name: str
     path_or_url: str | None = None
     score: float
 

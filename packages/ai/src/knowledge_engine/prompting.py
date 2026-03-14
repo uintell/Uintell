@@ -22,6 +22,7 @@ def build_citation_bundle(chunks: Sequence[RetrievedChunk]) -> tuple[str, list[d
                 "label": label,
                 "title": chunk.article_title,
                 "section_title": heading,
+                "source_name": chunk.source_name,
                 "document_slug": chunk.document_slug or "",
                 "path_or_url": chunk.path_or_url or "",
                 "source_type": chunk.source_type.value,

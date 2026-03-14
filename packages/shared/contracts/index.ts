@@ -11,6 +11,7 @@ export interface Citation {
   title: string;
   section_title: string;
   source_type: string;
+  source_name: string;
   document_slug: string;
   path_or_url: string;
 }
@@ -23,6 +24,7 @@ export interface SupportingPassage {
   section_title?: string | null;
   excerpt: string;
   source_type: string;
+  source_name: string;
   path_or_url?: string | null;
   score: number;
 }
@@ -34,6 +36,7 @@ export interface SearchResult {
   document_slug?: string | null;
   section_title?: string | null;
   source_type: string;
+  source_name: string;
   document_kind?: string | null;
   summary?: string | null;
   tags: string[];

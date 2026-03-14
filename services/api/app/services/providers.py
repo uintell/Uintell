@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -11,6 +12,37 @@ from openai import AsyncOpenAI
 
 from knowledge_engine.models import RetrievedChunk
 from knowledge_engine.prompting import build_rag_messages
+
+QUESTION_TOKEN_RE = re.compile(r"[a-z0-9]{3,}")
+QUESTION_STOPWORDS = {
+    "about",
+    "after",
+    "also",
+    "because",
+    "could",
+    "does",
+    "from",
+    "have",
+    "into",
+    "just",
+    "more",
+    "only",
+    "page",
+    "question",
+    "source",
+    "that",
+    "their",
+    "them",
+    "there",
+    "these",
+    "this",
+    "what",
+    "when",
+    "where",
+    "which",
+    "with",
+    "would",
+}
 
 
 @dataclass(slots=True)
@@ -278,12 +310,73 @@ def _render_extractive_answer(request: ProviderRequest) -> str:
     if not request.retrieved_chunks:
         return "I do not have enough verified offline evidence to answer this question."
 
-    lines = ["Based on the indexed offline sources:"]
-    for citation, chunk in zip(request.citations[:4], request.retrieved_chunks[:4], strict=False):
-        sentence = chunk.content.split(". ")[0].strip()
-        if len(sentence) > 240:
-            sentence = sentence[:237].rstrip() + "..."
-        lines.append(f"- {sentence} [{citation['label']}]")
+    question_terms = _question_terms(request.question)
+    evidence = _rank_supporting_sentences(request, question_terms=question_terms)
+    if not evidence:
+        return "I found indexed evidence, but it does not clearly support a reliable answer to that question."
+
+    lines = ["The strongest available evidence suggests:"]
+    for sentence, label in evidence[:4]:
+        lines.append(f"- {sentence} [{label}]")
     lines.append("")
-    lines.append("If you need a deeper answer, ask a narrower follow-up question.")
+    lines.append("This answer is limited to the indexed evidence retrieved for this page or source.")
     return "\n".join(lines)
+
+
+def _question_terms(question: str) -> list[str]:
+    return [
+        token
+        for token in QUESTION_TOKEN_RE.findall(question.lower())
+        if token not in QUESTION_STOPWORDS
+    ]
+
+
+def _rank_supporting_sentences(
+    request: ProviderRequest,
+    *,
+    question_terms: Sequence[str],
+) -> list[tuple[str, str]]:
+    ranked: list[tuple[int, int, str, str]] = []
+    seen: set[str] = set()
+
+    for chunk_index, (citation, chunk) in enumerate(zip(request.citations, request.retrieved_chunks, strict=False)):
+        for sentence in _split_sentences(chunk.content):
+            normalized = sentence.lower()
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            score = _sentence_score(sentence, question_terms=question_terms)
+            if score <= 0 and question_terms:
+                continue
+            ranked.append((score, -chunk_index, sentence, citation["label"]))
+
+    if not ranked:
+        for chunk_index, (citation, chunk) in enumerate(zip(request.citations, request.retrieved_chunks, strict=False)):
+            fallback = _clip_sentence(chunk.content)
+            if fallback:
+                ranked.append((1, -chunk_index, fallback, citation["label"]))
+
+    ranked.sort(reverse=True)
+    return [(sentence, label) for _, _, sentence, label in ranked[:4]]
+
+
+def _split_sentences(text: str) -> list[str]:
+    parts = re.split(r"(?<=[.!?])\s+", text.strip())
+    return [_clip_sentence(part) for part in parts if _clip_sentence(part)]
+
+
+def _clip_sentence(text: str) -> str:
+    sentence = " ".join(text.split()).strip()
+    if len(sentence) > 280:
+        sentence = sentence[:277].rstrip() + "..."
+    return sentence
+
+
+def _sentence_score(sentence: str, *, question_terms: Sequence[str]) -> int:
+    if not sentence:
+        return 0
+    haystack = sentence.lower()
+    if not question_terms:
+        return 1
+    matches = sum(1 for term in question_terms if term in haystack)
+    return matches

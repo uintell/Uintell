@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useDeferredValue, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
+import { buildDocumentHref } from "@/lib/reader-links";
 
 const SOURCE_FILTERS = [
   { label: "All", value: null as string | null },
@@ -130,8 +131,11 @@ export function SearchWorkspace() {
         {results.length === 0 && deferredQuery.length >= 2 && !loading ? (
           <div className="border border-dashed border-[#12311d] p-8 text-sm text-[#5faa73]">No results matched this query.</div>
         ) : null}
-        {results.map((result) => (
-          <article key={result.chunk_id} className="border border-[#12311d] bg-[#050b08] p-5">
+        {results.map((result) => {
+          const sectionHref = buildDocumentHref(result.document_slug, result.section_title);
+
+          return (
+            <article key={result.chunk_id} className="border border-[#12311d] bg-[#050b08] p-5">
             <div className="flex flex-wrap items-center gap-3">
               <div className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#5faa73]">{result.source_type}</div>
               {result.document_kind ? (
@@ -142,14 +146,17 @@ export function SearchWorkspace() {
             <h2 className="mt-3 text-xl font-medium text-[#7df2a6]">
               {result.document_slug ? (
                 <Link href={`/app/library/${result.document_slug}`} className="transition hover:text-[#7aaaff]">
-                  {result.title}
+                  <HighlightedText text={result.title} query={deferredQuery} />
                 </Link>
               ) : (
-                result.title
+                <HighlightedText text={result.title} query={deferredQuery} />
               )}
             </h2>
+            <div className="mt-2 text-sm text-[#5faa73]">{result.source_name}</div>
             {result.summary ? <div className="mt-3 text-sm text-[#66c485]">{result.summary}</div> : null}
-            <p className="mt-3 text-sm leading-7 text-[#66c485]">{result.excerpt}</p>
+            <p className="mt-3 text-sm leading-7 text-[#66c485]">
+              <HighlightedText text={result.excerpt} query={deferredQuery} />
+            </p>
             {result.tags.length ? (
               <div className="mt-4 flex flex-wrap gap-2">
                 {result.tags.slice(0, 4).map((tag) => (
@@ -160,9 +167,10 @@ export function SearchWorkspace() {
               </div>
             ) : null}
             <div className="mt-4 flex flex-wrap gap-3">
-              {result.document_slug ? (
-                <Link href={`/app/library/${result.document_slug}`} className="text-sm text-[#4d8dff] hover:text-[#7aaaff]">
-                  Open reader
+              {result.document_slug ? <Link href={`/app/library/${result.document_slug}`} className="text-sm text-[#4d8dff] hover:text-[#7aaaff]">Open page</Link> : null}
+              {sectionHref ? (
+                <Link href={sectionHref} className="text-sm text-[#4d8dff] hover:text-[#7aaaff]">
+                  Jump to section
                 </Link>
               ) : null}
               {result.path_or_url ? (
@@ -171,9 +179,44 @@ export function SearchWorkspace() {
                 </a>
               ) : null}
             </div>
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
     </div>
   );
+}
+
+function HighlightedText({ text, query }: { text: string; query: string }) {
+  const trimmedQuery = query.trim().toLowerCase();
+  if (!trimmedQuery) {
+    return <>{text}</>;
+  }
+
+  const terms = [...new Set(trimmedQuery.split(/\s+/).filter((term) => term.length >= 2))];
+  if (terms.length === 0) {
+    return <>{text}</>;
+  }
+
+  const matcher = new RegExp(`(${terms.map(escapeRegExp).join("|")})`, "ig");
+  const parts = text.split(matcher);
+
+  return (
+    <>
+      {parts.map((part, index) => {
+        const isMatch = terms.some((term) => part.toLowerCase() === term.toLowerCase());
+        return isMatch ? (
+          <mark key={`${index}-${part}`} className="bg-[#113521] px-1 text-[#7df2a6]">
+            {part}
+          </mark>
+        ) : (
+          <span key={`${index}-${part}`}>{part}</span>
+        );
+      })}
+    </>
+  );
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

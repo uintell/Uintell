@@ -161,13 +161,16 @@ Implemented and being refined:
 - source registration/import
 - ingestion status visibility
 - source/library browsing
-- article reader with table of contents, backlinks, and related pages
-- page-scoped AI answers with citations and supporting passages
+- article reader with markdown/code rendering, anchors, backlinks, and related pages
+- page-scoped AI answers with inline citations and supporting passages
+- search results that show source context and jump directly to page sections
 - hybrid retrieval over normalized document/chunk data
 
 ## Documentation Map
 
 - [docs/progress.md](docs/progress.md): current execution plan and milestones
+- [docs/current-system-audit.md](docs/current-system-audit.md): plain-English audit of the active vertical slice
+- [docs/next-sprint-plan.md](docs/next-sprint-plan.md): short plan for the next focused improvements
 - [docs/local-development.md](docs/local-development.md): recommended local setup
 - [docs/runtime-data.md](docs/runtime-data.md): code/data/runtime separation
 - [docs/architecture.md](docs/architecture.md): focused architecture notes

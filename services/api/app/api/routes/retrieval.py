@@ -35,6 +35,7 @@ async def search(
                 document_slug=item.document_slug,
                 section_title=item.section_title,
                 source_type=item.source_type.value,
+                source_name=item.source_name,
                 document_kind=item.document_kind,
                 summary=item.document_summary,
                 tags=item.tags,

@@ -53,6 +53,20 @@ The API owns:
 
 The current user-facing ingestion API is exposed under `/v1/imports/*`. Legacy chat, notes, and collections APIs remain in the repo as frozen compatibility surfaces, not as the primary product path.
 
+## Reader Rendering
+
+The reader route loads document detail from `/v1/documents/slug/{slug}` and renders one of three paths:
+
+- markdown documents from `raw_content`
+- code-like documents as code blocks
+- normalized text sections for everything else
+
+Section anchors come from normalized section metadata, and the reader uses them for:
+
+- table of contents links
+- search result section jumps
+- cited answer links back into the page
+
 ### `packages/ai`
 
 Shared parsing and retrieval helpers for:
@@ -86,6 +100,8 @@ Default retrieval path:
 3. merge and filter results
 4. return authoritative chunk/document payloads from PostgreSQL
 
+Search results expose source context plus jump-to-page and jump-to-section behavior directly in the web UI.
+
 Meilisearch is optional and should not be treated as a required default.
 
 ## Answering Model
@@ -96,6 +112,8 @@ Reader answers should be page-scoped first:
 2. widen to the current source only if needed
 3. generate an answer from retrieved evidence
 4. return citations and supporting passages explicitly
+
+The default provider path remains deterministic and offline-friendly, with optional Ollama or OpenAI providers layered on top of the same evidence bundle.
 
 ## Jobs
 
