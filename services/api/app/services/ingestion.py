@@ -52,6 +52,8 @@ class IngestionService:
         self._embedding_model_name = embedding_model_name
 
     async def process_job(self, job_id: UUID) -> IngestionSummary:
+        """Run one ingestion job from queued source path to indexed knowledge."""
+
         async with self._session_factory() as db:
             job = await self._system.get_job(db, job_id)
             if job is None:

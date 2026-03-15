@@ -8,6 +8,7 @@ import { DocumentBody, buildReaderSections } from "@/components/document-body";
 import { DocumentExploration } from "@/components/document-exploration";
 import { DocumentReaderSidebar } from "@/components/document-reader-sidebar";
 import { PageAnswerPanel } from "@/components/page-answer-panel";
+import { isHiddenDocumentLike } from "@/lib/content-visibility";
 import type { DocumentDetail } from "@uintell/shared/contracts";
 
 function formatTimestamp(value: string): string {
@@ -28,12 +29,17 @@ export function DocumentReaderWorkspace({ slug }: { slug: string }) {
   useEffect(() => {
     let active = true;
 
-    async function loadDocument() {
+    async function loadReaderDocument() {
       setLoading(true);
       setError(null);
       try {
         const response = await api.getDocumentBySlug(slug);
         if (active) {
+          if (isHiddenDocumentLike(response)) {
+            setDocument(null);
+            setError("Document not found");
+            return;
+          }
           setDocument(response);
           setActiveAnchor(null);
         }
@@ -48,7 +54,7 @@ export function DocumentReaderWorkspace({ slug }: { slug: string }) {
       }
     }
 
-    void loadDocument();
+    void loadReaderDocument();
     return () => {
       active = false;
     };

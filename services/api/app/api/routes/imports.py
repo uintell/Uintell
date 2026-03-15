@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_container, get_db, require_admin
+from app.core.content_visibility import is_hidden_job, is_hidden_source_type
 from app.repositories.documents import DocumentRepository
 from app.repositories.system import SystemRepository
 from app.schemas.documents import IngestSourceRequest, IngestionJobResponse
@@ -19,7 +20,11 @@ async def list_jobs(
     user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[IngestionJobResponse]:
-    jobs = await SystemRepository().list_jobs(db)
+    jobs = [
+        job
+        for job in await SystemRepository().list_jobs(db)
+        if not is_hidden_job(source_type=job.source_type, source_name=job.source_name, target_path=job.target_path)
+    ]
     return [IngestionJobResponse.model_validate(job, from_attributes=True) for job in jobs]
 
 
@@ -29,7 +34,7 @@ async def stats(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     repository = DocumentRepository()
-    counts = await repository.count_by_source(db)
+    counts = [item for item in await repository.count_by_source(db) if not is_hidden_source_type(item["source_type"])]
     indexing = await repository.count_by_indexing_status(db)
     return {"documents_by_source": counts, "documents_by_indexing_status": indexing}
 

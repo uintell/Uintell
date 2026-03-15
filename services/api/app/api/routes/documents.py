@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_container, get_db, require_user
+from app.core.content_visibility import is_hidden_document, is_hidden_source_type
 from app.repositories.documents import DocumentRepository
 from app.repositories.system import SystemRepository
 from app.schemas.documents import (
@@ -44,17 +45,25 @@ async def list_documents(
     user=Depends(require_user),
     db: AsyncSession = Depends(get_db),
 ) -> DocumentListResponse:
-    documents = await DocumentRepository().list_documents(
-        db,
-        query=query,
-        source_type=source_type,
-        source_name=source_name,
-        source_types=source_types,
-        document_kind=document_kind,
-        tag=tag,
-        sort=sort,
-        limit=limit,
-    )
+    documents = [
+        document
+        for document in await DocumentRepository().list_documents(
+            db,
+            query=query,
+            source_type=source_type,
+            source_name=source_name,
+            source_types=source_types,
+            document_kind=document_kind,
+            tag=tag,
+            sort=sort,
+            limit=limit,
+        )
+        if not is_hidden_document(
+            source_type=document.source_type,
+            title=document.title,
+            path_or_url=document.path_or_url,
+        )
+    ]
     return DocumentListResponse(
         documents=[_serialize_document(document) for document in documents]
     )
@@ -68,12 +77,16 @@ async def list_sources(
     user=Depends(require_user),
     db: AsyncSession = Depends(get_db),
 ) -> SourceListResponse:
-    sources = await DocumentRepository().list_sources(
-        db,
-        query=query,
-        source_type=source_type,
-        limit=limit,
-    )
+    sources = [
+        item
+        for item in await DocumentRepository().list_sources(
+            db,
+            query=query,
+            source_type=source_type,
+            limit=limit,
+        )
+        if not is_hidden_source_type(item["source_type"])
+    ]
     return SourceListResponse(
         sources=[
             SourceSummaryResponse(
@@ -96,24 +109,35 @@ async def get_source_detail(
     user=Depends(require_user),
     db: AsyncSession = Depends(get_db),
 ) -> SourceDetailResponse:
+    if is_hidden_source_type(source_type):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
+
     repository = DocumentRepository()
     sources = await repository.list_sources(db, source_type=source_type, limit=500)
     source = next((item for item in sources if item["source_name"] == source_name), None)
     if source is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
 
-    documents = await repository.list_documents(
-        db,
-        source_type=source_type,
-        source_name=source_name,
-        sort="updated_desc",
-        limit=200,
-    )
+    documents = [
+        document
+        for document in await repository.list_documents(
+            db,
+            source_type=source_type,
+            source_name=source_name,
+            sort="updated_desc",
+            limit=200,
+        )
+        if not is_hidden_document(
+            source_type=document.source_type,
+            title=document.title,
+            path_or_url=document.path_or_url,
+        )
+    ]
     return SourceDetailResponse(
         source_type=source["source_type"],
         source_name=source["source_name"],
-        document_count=source["document_count"],
-        indexed_count=source["indexed_count"],
+        document_count=len(documents),
+        indexed_count=len([document for document in documents if document.indexing_status == "indexed"]),
         latest_updated_at=source["latest_updated_at"],
         document_kinds=list(source["document_kinds"]),
         documents=[_serialize_document(document) for document in documents],
@@ -180,7 +204,11 @@ async def get_document(
     db: AsyncSession = Depends(get_db),
 ) -> DocumentDetailResponse:
     document = await DocumentRepository().get_document(db, document_id)
-    if document is None:
+    if document is None or is_hidden_document(
+        source_type=document.source_type if document else None,
+        title=document.title if document else None,
+        path_or_url=document.path_or_url if document else None,
+    ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     return await _build_detail(db, document)
 
@@ -192,7 +220,11 @@ async def get_document_by_slug(
     db: AsyncSession = Depends(get_db),
 ) -> DocumentDetailResponse:
     document = await DocumentRepository().get_document_by_slug(db, slug)
-    if document is None:
+    if document is None or is_hidden_document(
+        source_type=document.source_type if document else None,
+        title=document.title if document else None,
+        path_or_url=document.path_or_url if document else None,
+    ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     return await _build_detail(db, document)
 

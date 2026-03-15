@@ -39,7 +39,9 @@ export function LoginForm() {
       <form onSubmit={handleSubmit} className="w-full max-w-md rounded-3xl border border-line bg-panel p-8 shadow-panel">
         <div className="flex items-center gap-4">
           <div className="brandLockup__logoShell shrink-0">
-            <LogoMark size={64} />
+            <a href="https://uintell.org" aria-label="Go to uintell.org" className="block">
+              <LogoMark size={64} />
+            </a>
           </div>
           <div>
             <div className="text-xs uppercase tracking-[0.28em] text-accent">United Intelligence</div>

@@ -46,7 +46,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         <aside className="border border-[#12311d] bg-[#050b08] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.35)]">
           <div className="flex items-center gap-4">
             <div className="shrink-0">
-              <LogoMark size={72} />
+              <a href="https://uintell.org" aria-label="Go to uintell.org" className="block">
+                <LogoMark size={72} />
+              </a>
             </div>
             <div>
               <div className="text-xs uppercase tracking-[0.28em] text-[#00a126]">United Intelligence</div>

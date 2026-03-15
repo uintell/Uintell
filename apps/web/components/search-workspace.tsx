@@ -6,12 +6,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useDeferredValue, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
+import { isHiddenDocumentLike } from "@/lib/content-visibility";
 import { buildDocumentHref } from "@/lib/reader-links";
 
 const SOURCE_FILTERS = [
   { label: "All", value: null as string | null },
   { label: "Wikipedia", value: "wikipedia" },
-  { label: "Arch Wiki", value: "arch_wiki" },
   { label: "Books", value: "book" },
   { label: "Notes", value: "note" },
   { label: "Files", value: "filesystem" },
@@ -63,7 +63,7 @@ export function SearchWorkspace() {
     });
   }, [deferredQuery, pathname, router, searchParams, sourceType]);
 
-  async function runSearch(searchTerm: string) {
+  async function executeSearch(searchTerm: string) {
     if (searchTerm.length < 2) {
       setResults([]);
       setError(null);
@@ -78,7 +78,7 @@ export function SearchWorkspace() {
         source_types: sourceType ? [sourceType] : undefined,
         limit: 12,
       });
-      setResults(response.results);
+      setResults(response.results.filter((result) => !isHiddenDocumentLike(result)));
       setResponseMode(response.mode);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Search failed");
@@ -89,7 +89,7 @@ export function SearchWorkspace() {
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      void runSearch(deferredQuery);
+      void executeSearch(deferredQuery);
     }, 180);
     return () => {
       window.clearTimeout(timeout);
@@ -110,7 +110,7 @@ export function SearchWorkspace() {
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          void runSearch(query.trim());
+          void executeSearch(query.trim());
         }}
         className="border border-[#12311d] bg-[#050b08] p-5"
       >

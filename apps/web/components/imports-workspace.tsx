@@ -4,6 +4,7 @@ import type { ImportStats, IngestionJob, SourceProfile } from "@uintell/shared/c
 import { useEffect, useMemo, useState } from "react";
 
 import { api, readSourceProfiles } from "@/lib/api";
+import { isHiddenPath, isHiddenSourceType } from "@/lib/content-visibility";
 
 function parseTags(value: string): string[] {
   return value
@@ -55,7 +56,7 @@ export function ImportsWorkspace() {
 
   const summary = useMemo(() => summarizeStats(stats), [stats]);
 
-  async function refresh() {
+  async function loadImportState() {
     setStatus("Refreshing...");
     setError(null);
     try {
@@ -64,8 +65,13 @@ export function ImportsWorkspace() {
         api.getImportStats(),
         api.getSettings(),
       ]);
-      setJobs(jobsResponse);
-      setStats(statsResponse);
+      setJobs(
+        jobsResponse.filter((job) => !isHiddenSourceType(job.source_type) && !isHiddenPath(job.target_path) && !isHiddenPath(job.source_name)),
+      );
+      setStats({
+        documents_by_source: statsResponse.documents_by_source.filter((item) => !isHiddenSourceType(item.source_type)),
+        documents_by_indexing_status: statsResponse.documents_by_indexing_status,
+      });
       setProfiles(readSourceProfiles(settingsResponse.values));
       setStatus("Ready");
     } catch (err) {
@@ -75,7 +81,7 @@ export function ImportsWorkspace() {
   }
 
   useEffect(() => {
-    void refresh();
+    void loadImportState();
   }, []);
 
   async function saveProfiles() {
@@ -84,7 +90,7 @@ export function ImportsWorkspace() {
     try {
       const normalized = profiles.map(serializeProfile).filter((profile) => profile.id && profile.label && profile.target_path);
       await api.updateSettings({ sources: { profiles: normalized } });
-      await refresh();
+      await loadImportState();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save source profiles");
     } finally {
@@ -132,7 +138,7 @@ export function ImportsWorkspace() {
             {savingProfiles ? "Saving..." : "Save sources"}
           </button>
           <button
-            onClick={() => void refresh()}
+            onClick={() => void loadImportState()}
             className="rounded-full border border-[#12311d] px-5 py-2 text-sm text-[#4d8dff] transition hover:border-[#4d8dff] hover:text-[#7aaaff]"
           >
             Refresh status
@@ -175,7 +181,7 @@ export function ImportsWorkspace() {
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => void api.triggerImport({ profile_id: profile.id }).then(refresh)}
+                      onClick={() => void api.triggerImport({ profile_id: profile.id }).then(loadImportState)}
                       className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#4d8dff] transition hover:border-[#4d8dff] hover:text-[#7aaaff]"
                     >
                       Run import
@@ -216,7 +222,6 @@ export function ImportsWorkspace() {
                     >
                       <option value="filesystem">filesystem</option>
                       <option value="wikipedia">wikipedia</option>
-                      <option value="arch_wiki">arch_wiki</option>
                     </select>
                   </label>
                 </div>
@@ -322,7 +327,7 @@ export function ImportsWorkspace() {
               <h2 className="mt-2 text-2xl font-semibold text-[#7df2a6]">Recent jobs</h2>
             </div>
             <button
-              onClick={() => void refresh()}
+              onClick={() => void loadImportState()}
               className="rounded-full border border-[#12311d] px-4 py-2 text-sm text-[#4d8dff] transition hover:border-[#4d8dff] hover:text-[#7aaaff]"
             >
               Refresh

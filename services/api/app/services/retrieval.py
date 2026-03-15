@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import logging
 import re
 from collections import defaultdict
 from collections.abc import Sequence
 from uuid import UUID
 
 from qdrant_client import AsyncQdrantClient, models as qm
+from qdrant_client.http.exceptions import UnexpectedResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.documents import DocumentRepository
@@ -55,6 +57,8 @@ QUERY_STOPWORDS = {
     "using",
 }
 
+logger = logging.getLogger(__name__)
+
 
 class RetrievalService:
     def __init__(
@@ -71,6 +75,7 @@ class RetrievalService:
         self._collection = collection_name
         self._embeddings = embedding_provider
         self._meilisearch = meilisearch
+        self._semantic_available = True
 
     async def ensure_collection(self) -> None:
         exists = await self._qdrant.collection_exists(collection_name=self._collection)
@@ -120,19 +125,39 @@ class RetrievalService:
         tags: Sequence[str] | None,
         limit: int,
     ) -> list[RetrievedChunk]:
+        """Return reader-ready chunks using the single active retrieval path."""
+
         # Retrieval stays on one path: exact PostgreSQL search plus semantic
         # Qdrant search, then merge back onto authoritative Postgres rows.
         semantic_hits: list[tuple[str, float]] = []
+        semantic_failed = False
         semantic_limit = limit * 2
         if source_names and not document_ids:
             semantic_limit = limit * 6
-        if mode in {"hybrid", "semantic"}:
-            semantic_hits = await self._semantic_search(query=query, limit=semantic_limit, document_ids=document_ids)
+        if mode in {"hybrid", "semantic"} and self._semantic_available:
+            try:
+                semantic_hits = await self._semantic_search(query=query, limit=semantic_limit, document_ids=document_ids)
+            except Exception as exc:
+                semantic_failed = True
+                if _is_qdrant_dimension_mismatch(exc):
+                    self._semantic_available = False
+                    logger.warning(
+                        "retrieval.semantic_disabled_dimension_mismatch collection=%s expected_dimension=%s error=%s",
+                        self._collection,
+                        self._embeddings.dimension,
+                        exc,
+                    )
+                else:
+                    logger.warning(
+                        "retrieval.semantic_search_failed collection=%s error=%s",
+                        self._collection,
+                        exc,
+                    )
         semantic_ids = [chunk_id for chunk_id, _ in semantic_hits]
         semantic_scores = {chunk_id: score for chunk_id, score in semantic_hits}
         keyword_document_ids: list[str] = []
         keyword_ids: list[str] = []
-        if mode in {"hybrid", "exact"}:
+        if mode in {"hybrid", "exact"} or semantic_failed:
             keyword_document_ids = []
             if self._meilisearch is not None and not source_names and not document_ids:
                 keyword_document_ids = await self._meilisearch.search(query=query, source_types=source_types, limit=limit * 2)
@@ -154,8 +179,10 @@ class RetrievalService:
                     limit=limit * 2,
                 )
 
-        if mode == "semantic":
+        if mode == "semantic" and semantic_hits:
             merged_ids = semantic_ids[:limit]
+        elif mode == "semantic":
+            merged_ids = keyword_ids[:limit]
         elif mode == "exact":
             merged_ids = keyword_ids[:limit]
         else:
@@ -206,6 +233,12 @@ class RetrievalService:
             query_filter=query_filter,
         )
         return [(str(point.id), float(getattr(point, "score", 0.0) or 0.0)) for point in points]
+
+
+def _is_qdrant_dimension_mismatch(exc: Exception) -> bool:
+    if not isinstance(exc, UnexpectedResponse):
+        return False
+    return "Vector dimension error" in str(exc)
 
 
 def _reciprocal_rank_fusion(rankings: Sequence[Sequence[str]], *, limit: int, k: int = 60) -> list[str]:

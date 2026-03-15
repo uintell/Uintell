@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
+import { isHiddenDocumentLike, isHiddenSourceType } from "@/lib/content-visibility";
 
 function formatTimestamp(value: string | null | undefined): string {
   if (!value) {
@@ -25,6 +26,13 @@ export function SourceDetailWorkspace({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isHiddenSourceType(sourceType)) {
+      setSource(null);
+      setError("Source not found");
+      setLoading(false);
+      return;
+    }
+
     let active = true;
 
     async function loadSource() {
@@ -33,7 +41,11 @@ export function SourceDetailWorkspace({
       try {
         const response = await api.getSourceDetail(sourceType, sourceName);
         if (active) {
-          setSource(response);
+          setSource({
+            ...response,
+            document_count: response.documents.filter((document) => !isHiddenDocumentLike(document)).length,
+            documents: response.documents.filter((document) => !isHiddenDocumentLike(document)),
+          });
         }
       } catch (err) {
         if (active) {

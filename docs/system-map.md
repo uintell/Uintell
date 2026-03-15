@@ -12,21 +12,21 @@ The core product loop is:
 
 ```text
 Sources
-   |
-   v
-Ingestion
-   |
-   v
-Normalized Knowledge Store
-   |
-   v
+  |
+  v
+Ingestion Service / Worker
+  |
+  v
+Knowledge Engine
+  |
+  v
 Search / Retrieval
-   |
-   v
-AI Answering
-   |
-   v
-Reader UI
+  |
+  v
+AI Answer
+  |
+  v
+Frontend UI
 ```
 
 ## Core Components

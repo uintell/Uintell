@@ -11,6 +11,8 @@ import type {
   User,
 } from "@uintell/shared/contracts";
 
+import { isHiddenProfileLike } from "@/lib/content-visibility";
+
 function isLocalHostname(hostname: string): boolean {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]";
 }
@@ -169,5 +171,5 @@ export function readSourceProfiles(values: Record<string, unknown>): SourceProfi
     }
     const candidate = profile as Partial<SourceProfile>;
     return Boolean(candidate.id && candidate.label && candidate.source_type && candidate.source_name && candidate.target_path);
-  });
+  }).filter((profile) => !isHiddenProfileLike(profile));
 }

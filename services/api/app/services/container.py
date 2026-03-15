@@ -20,6 +20,8 @@ from app.services.storage import FileStorage
 
 @dataclass(slots=True)
 class ServiceContainer:
+    """The active runtime boundary for the web -> API knowledge product."""
+
     settings: Settings
     engine: AsyncEngine
     session_factory: async_sessionmaker[AsyncSession]

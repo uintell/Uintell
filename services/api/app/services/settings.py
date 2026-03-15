@@ -115,15 +115,4 @@ class SettingsService:
                 "tags": ["wikipedia"],
                 "enabled": False,
             },
-            {
-                "id": "archwiki-html",
-                "label": "Arch Wiki HTML mirror",
-                "description": "Register a local Arch Wiki HTML export when you want to ingest it.",
-                "source_type": "arch_wiki",
-                "source_name": "arch_linux_wiki",
-                "target_path": "/workspace/data/imports/archwiki/html",
-                "document_kind": "article",
-                "tags": ["archwiki"],
-                "enabled": False,
-            },
         ]

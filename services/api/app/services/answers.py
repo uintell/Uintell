@@ -5,6 +5,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.content_visibility import is_hidden_document
 from app.core.config import Settings
 from app.repositories.documents import DocumentRepository
 from app.services.providers import LLMProvider, ProviderRequest
@@ -59,6 +60,8 @@ class AnswerService:
         question: str,
         mode: str = "hybrid",
     ) -> GroundedAnswer:
+        """Answer a question about one page, widening to the source only if needed."""
+
         document = await self._documents.get_document(db, document_id)
         if document is None:
             raise ValueError("Document not found")
@@ -75,6 +78,36 @@ class AnswerService:
             tags=None,
             limit=self._settings.rag_top_k,
         )
+        page_hits = [
+            chunk
+            for chunk in page_hits
+            if not is_hidden_document(
+                source_type=chunk.source_type.value,
+                title=chunk.article_title,
+                path_or_url=chunk.path_or_url,
+            )
+        ]
+
+        if not page_hits and document.title.strip():
+            page_hits = await self._retrieval.search(
+                db,
+                query=document.title,
+                mode="exact",
+                source_types=[document.source_type],
+                source_names=[document.source_name],
+                document_ids=[str(document.id)],
+                tags=None,
+                limit=self._settings.rag_top_k,
+            )
+            page_hits = [
+                chunk
+                for chunk in page_hits
+                if not is_hidden_document(
+                    source_type=chunk.source_type.value,
+                    title=chunk.article_title,
+                    path_or_url=chunk.path_or_url,
+                )
+            ]
 
         merged_hits = list(page_hits)
         scope_used = "page"
@@ -89,6 +122,15 @@ class AnswerService:
                 tags=None,
                 limit=self._settings.rag_top_k,
             )
+            source_hits = [
+                chunk
+                for chunk in source_hits
+                if not is_hidden_document(
+                    source_type=chunk.source_type.value,
+                    title=chunk.article_title,
+                    path_or_url=chunk.path_or_url,
+                )
+            ]
             merged_hits = _merge_chunks(page_hits, source_hits, limit=self._settings.rag_top_k)
             if source_hits:
                 scope_used = "page_then_source"

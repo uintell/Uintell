@@ -5,11 +5,11 @@ import Link from "next/link";
 import { useDeferredValue, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
+import { isHiddenDocumentLike, isHiddenSourceType } from "@/lib/content-visibility";
 
 const SOURCE_VIEWS = [
   { label: "All", value: null as string | null, href: "/app/library" },
   { label: "Wikipedia", value: "wikipedia", href: "/app/library/source/wikipedia" },
-  { label: "Arch Wiki", value: "arch_wiki", href: "/app/library/source/arch_wiki" },
   { label: "Books", value: "book", href: "/app/library/source/book" },
   { label: "Notes", value: "note", href: "/app/library/source/note" },
   { label: "Files", value: "filesystem", href: "/app/library/source/filesystem" },
@@ -30,7 +30,7 @@ export function LibraryWorkspace({ initialSourceType = null }: LibraryWorkspaceP
   const [error, setError] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query.trim());
 
-  async function loadDocuments() {
+  async function loadLibraryState() {
     setLoading(true);
     setError(null);
     try {
@@ -47,8 +47,8 @@ export function LibraryWorkspace({ initialSourceType = null }: LibraryWorkspaceP
           limit: 18,
         }),
       ]);
-      setDocuments(documentsResponse.documents);
-      setSources(sourcesResponse.sources);
+      setDocuments(documentsResponse.documents.filter((document) => !isHiddenDocumentLike(document)));
+      setSources(sourcesResponse.sources.filter((source) => !isHiddenSourceType(source.source_type)));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load documents");
     } finally {
@@ -61,7 +61,7 @@ export function LibraryWorkspace({ initialSourceType = null }: LibraryWorkspaceP
   }, [initialSourceType]);
 
   useEffect(() => {
-    void loadDocuments();
+    void loadLibraryState();
   }, [deferredQuery, sourceType, sort]);
 
   return (
@@ -94,7 +94,7 @@ export function LibraryWorkspace({ initialSourceType = null }: LibraryWorkspaceP
                   setError(null);
                   try {
                     await api.uploadDocument(file);
-                    await loadDocuments();
+                    await loadLibraryState();
                   } catch (err) {
                     setError(err instanceof Error ? err.message : "Upload failed");
                   } finally {

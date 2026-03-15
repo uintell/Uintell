@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_container, get_db, require_user
+from app.core.content_visibility import is_hidden_document
 from app.schemas.chat import SearchRequest, SearchResponse, SearchResult
 from app.services.container import ServiceContainer
 
@@ -20,14 +21,22 @@ async def search(
     db: AsyncSession = Depends(get_db),
     container: ServiceContainer = Depends(get_container),
 ) -> SearchResponse:
-    results = await container.retrieval.search(
-        db,
-        query=payload.query,
-        mode=payload.mode,
-        source_types=payload.source_types,
-        tags=payload.tags,
-        limit=payload.limit,
-    )
+    results = [
+        item
+        for item in await container.retrieval.search(
+            db,
+            query=payload.query,
+            mode=payload.mode,
+            source_types=payload.source_types,
+            tags=payload.tags,
+            limit=payload.limit,
+        )
+        if not is_hidden_document(
+            source_type=item.source_type.value,
+            title=item.article_title,
+            path_or_url=item.path_or_url,
+        )
+    ]
     return SearchResponse(
         mode=payload.mode,
         results=[

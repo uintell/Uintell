@@ -246,7 +246,9 @@ export function LandingPage() {
                 className="rounded-sm border border-[#1a4029] bg-[linear-gradient(180deg,#08110d_0%,#030806_100%)] px-6 py-10 sm:px-10"
               >
                 <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
-                  <LogoMark size={144} />
+                  <a href="https://uintell.org" aria-label="Go to uintell.org" className="block">
+                    <LogoMark size={144} />
+                  </a>
                   <div className="mt-5 text-xl font-semibold tracking-[0.22em] text-[#00a126] sm:text-2xl">United Intelligence</div>
                   <p className="mt-4 max-w-2xl text-sm leading-7 text-[#66c485]">
                     A reader-first knowledge engine for technical and mathematical sources, designed around page reading,

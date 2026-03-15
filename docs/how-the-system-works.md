@@ -113,6 +113,21 @@ The answer service retrieves from the current page first, broadens to the source
 - related pages and backlinks:
   `apps/web/components/document-exploration.tsx`
 
+## Where The Frontend Calls The Backend
+
+All active frontend network calls go through:
+
+- `apps/web/lib/api.ts`
+
+The main UI surfaces that use it are:
+
+- `apps/web/components/imports-workspace.tsx`
+- `apps/web/components/library-workspace.tsx`
+- `apps/web/components/source-detail-workspace.tsx`
+- `apps/web/components/search-workspace.tsx`
+- `apps/web/components/document-reader-workspace.tsx`
+- `apps/web/components/page-answer-panel.tsx`
+
 ## Active Vs Frozen
 
 Active:

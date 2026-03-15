@@ -355,7 +355,10 @@ class DocumentRepository:
         SELECT dc.id::text AS chunk_id
         FROM document_chunks dc
         JOIN documents d ON d.id = dc.document_id
-        WHERE to_tsvector('english', coalesce(dc.section_title, '') || ' ' || dc.content)
+        WHERE to_tsvector(
+            'english',
+            coalesce(d.title, '') || ' ' || coalesce(d.summary, '') || ' ' || coalesce(dc.section_title, '') || ' ' || dc.content
+        )
               @@ websearch_to_tsquery('english', :query)
         """
         params: dict[str, object] = {"query": query, "limit": limit}
@@ -370,7 +373,10 @@ class DocumentRepository:
             params["document_ids"] = list(document_ids)
         sql += """
         ORDER BY ts_rank_cd(
-            to_tsvector('english', coalesce(dc.section_title, '') || ' ' || dc.content),
+            to_tsvector(
+                'english',
+                coalesce(d.title, '') || ' ' || coalesce(d.summary, '') || ' ' || coalesce(dc.section_title, '') || ' ' || dc.content
+            ),
             websearch_to_tsquery('english', :query)
         ) DESC
         LIMIT :limit
@@ -405,6 +411,8 @@ class DocumentRepository:
         return list(result.scalars().all())
 
     async def list_related(self, db: AsyncSession, *, document: Document, limit: int = 8) -> list[Document]:
+        """Rank a small set of nearby pages for the reader continue-reading rail."""
+
         # Related pages are intentionally heuristic for now: direct links and
         # backlinks are strongest, then shared source/tags fill nearby reading.
         candidates: dict[UUID, tuple[int, Document]] = {}
