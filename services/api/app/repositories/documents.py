@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from collections.abc import Sequence
 from uuid import UUID
 
@@ -9,6 +10,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.entities import Document, DocumentChunk, DocumentLink, DocumentStatus, EmbeddingStatus
 from knowledge_engine.models import ChunkPayload, ParsedDocument, RetrievedChunk, SourceType
 from knowledge_engine.utils import sha256_text, slugify
+
+
+@dataclass(slots=True)
+class RelatedDocumentCandidate:
+    document: Document
+    relation_kind: str
+    relation_reason: str
+    score: int
 
 
 class DocumentRepository:
@@ -355,9 +364,11 @@ class DocumentRepository:
         SELECT dc.id::text AS chunk_id
         FROM document_chunks dc
         JOIN documents d ON d.id = dc.document_id
-        WHERE to_tsvector(
-            'english',
-            coalesce(d.title, '') || ' ' || coalesce(d.summary, '') || ' ' || coalesce(dc.section_title, '') || ' ' || dc.content
+        WHERE (
+            setweight(to_tsvector('english', coalesce(d.title, '')), 'A') ||
+            setweight(to_tsvector('english', coalesce(dc.section_title, '')), 'B') ||
+            setweight(to_tsvector('english', coalesce(d.summary, '')), 'C') ||
+            setweight(to_tsvector('english', dc.content), 'D')
         )
               @@ websearch_to_tsquery('english', :query)
         """
@@ -373,9 +384,11 @@ class DocumentRepository:
             params["document_ids"] = list(document_ids)
         sql += """
         ORDER BY ts_rank_cd(
-            to_tsvector(
-                'english',
-                coalesce(d.title, '') || ' ' || coalesce(d.summary, '') || ' ' || coalesce(dc.section_title, '') || ' ' || dc.content
+            (
+                setweight(to_tsvector('english', coalesce(d.title, '')), 'A') ||
+                setweight(to_tsvector('english', coalesce(dc.section_title, '')), 'B') ||
+                setweight(to_tsvector('english', coalesce(d.summary, '')), 'C') ||
+                setweight(to_tsvector('english', dc.content), 'D')
             ),
             websearch_to_tsquery('english', :query)
         ) DESC
@@ -410,12 +423,31 @@ class DocumentRepository:
         )
         return list(result.scalars().all())
 
-    async def list_related(self, db: AsyncSession, *, document: Document, limit: int = 8) -> list[Document]:
+    async def list_related(
+        self,
+        db: AsyncSession,
+        *,
+        document: Document,
+        limit: int = 8,
+    ) -> list[RelatedDocumentCandidate]:
         """Rank a small set of nearby pages for the reader continue-reading rail."""
 
         # Related pages are intentionally heuristic for now: direct links and
         # backlinks are strongest, then shared source/tags fill nearby reading.
-        candidates: dict[UUID, tuple[int, Document]] = {}
+        candidates: dict[UUID, RelatedDocumentCandidate] = {}
+
+        def register(item: Document, *, score: int, relation_kind: str, relation_reason: str) -> None:
+            existing = candidates.get(item.id)
+            if existing is None or score > existing.score:
+                candidates[item.id] = RelatedDocumentCandidate(
+                    document=item,
+                    relation_kind=relation_kind,
+                    relation_reason=relation_reason,
+                    score=score if existing is None else existing.score + score,
+                )
+                return
+
+            existing.score += score
 
         linked = (
             await db.execute(
@@ -426,11 +458,21 @@ class DocumentRepository:
             )
         ).scalars().all()
         for item in linked:
-            candidates[item.id] = (candidates.get(item.id, (0, item))[0] + 5, item)
+            register(
+                item,
+                score=5,
+                relation_kind="linked",
+                relation_reason="Directly linked from this page.",
+            )
 
         backlinks = await self.list_backlinks(db, document_id=document.id, limit=limit * 2)
         for item in backlinks:
-            candidates[item.id] = (candidates.get(item.id, (0, item))[0] + 4, item)
+            register(
+                item,
+                score=4,
+                relation_kind="backlink",
+                relation_reason="References this page elsewhere in the library.",
+            )
 
         tag_set = set(document.tags_json or [])
         nearby = (
@@ -443,15 +485,30 @@ class DocumentRepository:
         ).scalars().all()
         for item in nearby:
             score = 0
+            relation_kind = "nearby"
+            relation_reason = "Nearby page in the same knowledge space."
             if item.source_type == document.source_type:
                 score += 1
+                relation_kind = "same_source"
+                relation_reason = "From the same source."
             shared_tags = len(tag_set.intersection(item.tags_json or []))
             score += shared_tags * 2
             if score > 0:
-                candidates[item.id] = (candidates.get(item.id, (0, item))[0] + score, item)
+                if shared_tags > 0 and item.source_type == document.source_type:
+                    relation_kind = "same_source_shared_tags"
+                    relation_reason = f"Same source with {shared_tags} shared tag{'s' if shared_tags != 1 else ''}."
+                elif shared_tags > 0:
+                    relation_kind = "shared_tags"
+                    relation_reason = f"Shares {shared_tags} tag{'s' if shared_tags != 1 else ''} with this page."
+                register(
+                    item,
+                    score=score,
+                    relation_kind=relation_kind,
+                    relation_reason=relation_reason,
+                )
 
-        ranked = sorted(candidates.values(), key=lambda row: (row[0], row[1].updated_at), reverse=True)
-        return [document_row for _, document_row in ranked[:limit]]
+        ranked = sorted(candidates.values(), key=lambda row: (row.score, row.document.updated_at), reverse=True)
+        return ranked[:limit]
 
 
 def _serialize_sections(parsed_document: ParsedDocument) -> list[dict[str, str | None]]:

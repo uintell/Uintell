@@ -286,6 +286,7 @@ def _rerank_chunks(
         score = 0.0
         score += _field_match_score(chunk.article_title, normalized_query=normalized_query, query_terms=query_terms) * 6.0
         score += _field_match_score(chunk.section_title or "", normalized_query=normalized_query, query_terms=query_terms) * 3.0
+        score += _field_match_score(chunk.document_summary or "", normalized_query=normalized_query, query_terms=query_terms) * 1.4
         score += _field_match_score(chunk.content[:900], normalized_query=normalized_query, query_terms=query_terms)
         if chunk.chunk_id in keyword_ids:
             score += 42.0

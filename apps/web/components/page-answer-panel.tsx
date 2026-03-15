@@ -15,6 +15,21 @@ export function PageAnswerPanel({ document }: { document: DocumentDetail }) {
 
   const citationMap = useMemo(() => new Map(answer?.citations.map((item) => [item.label, item]) ?? []), [answer]);
   const suggestedQuestions = useMemo(() => buildQuestionSuggestions(document), [document]);
+  const supportingPassages = useMemo(() => {
+    if (!answer) {
+      return [];
+    }
+    return [...answer.supporting_passages].sort((left, right) => {
+      const leftWeight = left.document_id === document.id ? 0 : 1;
+      const rightWeight = right.document_id === document.id ? 0 : 1;
+      if (leftWeight !== rightWeight) {
+        return leftWeight - rightWeight;
+      }
+      return right.score - left.score;
+    });
+  }, [answer, document.id]);
+  const pagePassageCount = supportingPassages.filter((passage) => passage.document_id === document.id).length;
+  const sourcePassageCount = supportingPassages.length - pagePassageCount;
 
   async function askPage(nextQuestion?: string) {
     const trimmed = (nextQuestion ?? question).trim();
@@ -102,12 +117,21 @@ export function PageAnswerPanel({ document }: { document: DocumentDetail }) {
 
       {answer ? (
         <div className="mt-8 space-y-5">
+          <div className="grid gap-3 md:grid-cols-3">
+            <Metric label="Answer scope" value={formatScope(answer.scope_used)} />
+            <Metric label="Passages from this page" value={String(pagePassageCount)} />
+            <Metric label="Passages from same source" value={String(sourcePassageCount)} />
+          </div>
+
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.8fr)]">
             <section className="border border-[#12311d] bg-[#08110d] p-4 lg:p-5">
               <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Answer</div>
               <div className="mt-4 rounded-2xl border border-[#12311d] bg-[#050b08] p-4">
                 <div className="text-[10px] uppercase tracking-[0.18em] text-[#5faa73]">Question</div>
                 <div className="mt-2 text-sm leading-7 text-[#7df2a6]">{question.trim()}</div>
+              </div>
+              <div className="mt-4 rounded-2xl border border-[#12311d] bg-[#050b08] p-4 text-sm leading-7 text-[#66c485]">
+                {describeScope(answer.scope_used)}
               </div>
               <div className="mt-4 border-l border-[#12311d] pl-4">
                 <AnswerBody answer={answer.answer} citations={citationMap} />
@@ -125,11 +149,18 @@ export function PageAnswerPanel({ document }: { document: DocumentDetail }) {
                 <div className="rounded-2xl border border-[#12311d] bg-[#050b08] p-4">
                   <div className="text-[10px] uppercase tracking-[0.18em] text-[#5faa73]">Scope</div>
                   <div className="mt-2 text-sm text-[#7df2a6]">{formatScope(answer.scope_used)}</div>
-                  <div className="mt-2 leading-6 text-[#66c485]">{describeScope(answer.scope_used)}</div>
+                  <div className="mt-2 leading-6 text-[#66c485]">
+                    {pagePassageCount > 0
+                      ? `${pagePassageCount} supporting passage${pagePassageCount === 1 ? "" : "s"} came from this page.`
+                      : "This answer did not find direct support from the current page."}{" "}
+                    {sourcePassageCount > 0
+                      ? `${sourcePassageCount} additional passage${sourcePassageCount === 1 ? "" : "s"} came from the surrounding source.`
+                      : "No extra source passages were needed."}
+                  </div>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                   <Metric label="Citations" value={String(answer.citations.length)} />
-                  <Metric label="Evidence passages" value={String(answer.supporting_passages.length)} />
+                  <Metric label="Evidence passages" value={String(supportingPassages.length)} />
                   <Metric label="Provider" value={answer.provider_name} />
                   <Metric label="Model" value={answer.model_name} />
                 </div>
@@ -149,8 +180,8 @@ export function PageAnswerPanel({ document }: { document: DocumentDetail }) {
             <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.85fr)]">
               <section className="space-y-3">
                 <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Supporting passages</div>
-                {answer.supporting_passages.length === 0 ? <div className="text-sm text-[#5faa73]">No passages returned.</div> : null}
-                {answer.supporting_passages.map((passage) => {
+                {supportingPassages.length === 0 ? <div className="text-sm text-[#5faa73]">No passages returned.</div> : null}
+                {supportingPassages.map((passage) => {
                   const href = buildDocumentHref(passage.document_slug, passage.section_title);
                   const isCurrentPage = passage.document_id === document.id;
                   return (
@@ -170,10 +201,13 @@ export function PageAnswerPanel({ document }: { document: DocumentDetail }) {
                       </div>
                       <div className="mt-3 text-sm font-medium text-[#7df2a6]">{passage.title}</div>
                       <div className="mt-1 text-xs text-[#66c485]">{passage.source_name}</div>
+                      <div className="mt-2 text-xs uppercase tracking-[0.16em] text-[#5faa73]">
+                        {isCurrentPage ? "Direct page evidence" : "Broadened source evidence"}
+                      </div>
                       <div className="mt-3 border-l border-[#12311d] pl-4 text-sm leading-7 text-[#66c485]">{passage.excerpt}</div>
                       {href ? (
                         <Link href={href} className="mt-4 inline-block text-sm text-[#4d8dff] hover:text-[#7aaaff]">
-                          Jump to evidence
+                          {isCurrentPage ? "Jump to passage in this page" : "Open supporting passage"}
                         </Link>
                       ) : null}
                     </div>

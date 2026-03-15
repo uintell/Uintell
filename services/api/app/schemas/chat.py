@@ -70,6 +70,7 @@ class SearchResult(BaseModel):
     title: str
     document_slug: str | None = None
     section_title: str | None
+    section_anchor: str | None = None
     source_type: str
     source_name: str
     document_kind: str | None = None
@@ -78,6 +79,7 @@ class SearchResult(BaseModel):
     path_or_url: str | None
     excerpt: str
     score: float
+    match_reasons: list[str] = Field(default_factory=list)
 
 
 class SearchResponse(BaseModel):

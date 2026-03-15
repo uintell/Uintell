@@ -63,8 +63,9 @@ Important:
 4. Register a local source path.
 5. Run ingestion.
 6. Open `Library` or a source detail page.
-7. Open a page in the reader.
-8. Use `Ask this page`, inspect citations, and jump into supporting passages.
+7. Search for a page or browse to it from the source/library view.
+8. Open a page in the reader.
+9. Use `Ask this page`, inspect citations, and jump into supporting passages.
 
 ## Demo Data
 

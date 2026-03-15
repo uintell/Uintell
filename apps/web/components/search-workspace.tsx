@@ -100,11 +100,16 @@ export function SearchWorkspace() {
     <div className="space-y-6">
       <header className="border border-[#12311d] bg-[#050b08] p-6 lg:p-8">
         <div className="text-xs uppercase tracking-[0.2em] text-[#5faa73]">Knowledge search</div>
-        <h1 className="mt-3 text-3xl font-semibold text-[#7df2a6]">Search pages, sections, and code across your library.</h1>
+        <h1 className="mt-3 text-3xl font-semibold text-[#7df2a6]">Find the exact page, section, or code example faster.</h1>
         <p className="mt-3 max-w-3xl text-sm leading-8 text-[#66c485]">
-          Search is tuned for the reader flow: find a page quickly, open it, and ask page-scoped questions with visible
-          evidence. The default search path blends exact and semantic matching without exposing extra tuning.
+          Uintell search is tuned for imported technical knowledge, not the open web. Results explain why they matched,
+          show which source they came from, and point you to the best page or section to open next.
         </p>
+        <div className="mt-5 flex flex-wrap gap-2 text-xs text-[#66c485]">
+          <span className="rounded-full border border-[#12311d] bg-[#08110d] px-3 py-1">Exact title matches first</span>
+          <span className="rounded-full border border-[#12311d] bg-[#08110d] px-3 py-1">Section-aware results</span>
+          <span className="rounded-full border border-[#12311d] bg-[#08110d] px-3 py-1">Source labels and evidence snippets</span>
+        </div>
       </header>
 
       <form
@@ -158,7 +163,7 @@ export function SearchWorkspace() {
               ? "Searching..."
               : deferredQuery.length < 2
                 ? "Type at least two characters to search."
-                : `${results.length} results via ${responseMode}`}
+                : `${results.length} result${results.length === 1 ? "" : "s"} via ${responseMode}`}
           </div>
           {deferredQuery.length >= 2 ? (
             <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">
@@ -167,14 +172,10 @@ export function SearchWorkspace() {
           ) : null}
         </div>
         {deferredQuery.length < 2 && !loading ? (
-          <div className="border border-dashed border-[#12311d] bg-[#050b08] p-8 text-sm text-[#66c485]">
-            Search works best for page titles, section names, exact technical phrases, and concrete implementation details.
-          </div>
+          <SearchGuidance />
         ) : null}
         {results.length === 0 && deferredQuery.length >= 2 && !loading ? (
-          <div className="border border-dashed border-[#12311d] bg-[#050b08] p-8 text-sm text-[#5faa73]">
-            No results matched this query. Try a page title, a section name, or a more specific technical phrase.
-          </div>
+          <SearchEmptyState query={deferredQuery} />
         ) : null}
         {loading
           ? Array.from({ length: Math.max(2, Math.min(4, results.length || 3)) }).map((_, index) => (
@@ -189,70 +190,152 @@ export function SearchWorkspace() {
               </article>
             ))
           : null}
-        {results.map((result) => {
-          const sectionHref = buildDocumentHref(result.document_slug, result.section_title);
-          const titleMatch = queryMatchesTitle(result.title, deferredQuery);
-          const sectionMatch = queryMatchesTitle(result.section_title ?? "", deferredQuery);
+        {results.map((result, index) => (
+          <SearchResultCard key={result.chunk_id} result={result} query={deferredQuery} rank={index + 1} />
+        ))}
+      </div>
+    </div>
+  );
+}
 
-          return (
-            <article key={result.chunk_id} className="border border-[#12311d] bg-[#050b08] p-5">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#5faa73]">{result.source_type}</div>
-                {result.document_kind ? (
-                  <div className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#4d8dff]">{result.document_kind}</div>
-                ) : null}
-                <div className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#66c485]">{result.source_name}</div>
-                {titleMatch ? <div className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#4d8dff]">Title match</div> : null}
-                {!titleMatch && sectionMatch ? (
-                  <div className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#4d8dff]">Section match</div>
-                ) : null}
-              </div>
-              <h2 className="mt-4 text-2xl font-medium text-[#7df2a6]">
-                {result.document_slug ? (
-                  <Link href={`/app/library/${result.document_slug}`} className="transition hover:text-[#7aaaff]">
-                    <HighlightedText text={result.title} query={deferredQuery} />
-                  </Link>
-                ) : (
-                  <HighlightedText text={result.title} query={deferredQuery} />
-                )}
-              </h2>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em] text-[#5faa73]">
-                <span>{result.section_title ?? "Overview"}</span>
-                {result.score > 0 ? <span>semantic {result.score.toFixed(2)}</span> : null}
-              </div>
-              {result.summary ? <div className="mt-4 text-sm leading-7 text-[#66c485]">{result.summary}</div> : null}
-              <p className="mt-4 border-l border-[#12311d] pl-4 text-sm leading-7 text-[#66c485]">
-                <HighlightedText text={result.excerpt} query={deferredQuery} />
+function SearchResultCard({
+  result,
+  query,
+  rank,
+}: {
+  result: SearchResult;
+  query: string;
+  rank: number;
+}) {
+  const pageHref = result.document_slug ? `/app/library/${result.document_slug}` : null;
+  const sectionHref = buildDocumentHref(result.document_slug, result.section_title, result.section_anchor);
+  const titleMatch = queryMatchesTitle(result.title, query);
+  const sectionMatch = queryMatchesTitle(result.section_title ?? "", query);
+
+  return (
+    <article className="border border-[#12311d] bg-[#050b08] p-5 lg:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em]">
+            <span className="rounded-full border border-[#12311d] px-3 py-1 text-[#5faa73]">#{rank}</span>
+            <span className="rounded-full border border-[#12311d] px-3 py-1 text-[#5faa73]">{result.source_type}</span>
+            {result.document_kind ? (
+              <span className="rounded-full border border-[#12311d] px-3 py-1 text-[#4d8dff]">{result.document_kind}</span>
+            ) : null}
+            <span className="rounded-full border border-[#12311d] px-3 py-1 text-[#66c485]">{result.source_name}</span>
+            {titleMatch ? <span className="rounded-full border border-[#12311d] px-3 py-1 text-[#4d8dff]">Exact page title</span> : null}
+            {!titleMatch && sectionMatch ? (
+              <span className="rounded-full border border-[#12311d] px-3 py-1 text-[#4d8dff]">Exact section heading</span>
+            ) : null}
+          </div>
+
+          <h2 className="mt-4 max-w-4xl text-2xl font-medium text-[#7df2a6] lg:text-[1.9rem]">
+            {pageHref ? (
+              <Link href={pageHref} className="transition hover:text-[#7aaaff]">
+                <HighlightedText text={result.title} query={query} />
+              </Link>
+            ) : (
+              <HighlightedText text={result.title} query={query} />
+            )}
+          </h2>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em] text-[#5faa73]">
+            <span>{result.section_title ?? "Overview"}</span>
+            {result.score > 0 ? <span>semantic {result.score.toFixed(2)}</span> : null}
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {result.match_reasons.map((reason) => (
+              <span key={`${result.chunk_id}-${reason}`} className="rounded-full border border-[#12311d] bg-[#08110d] px-3 py-1 text-xs text-[#66c485]">
+                {reason}
+              </span>
+            ))}
+          </div>
+
+          {result.summary ? <div className="mt-4 max-w-4xl text-sm leading-7 text-[#66c485]">{result.summary}</div> : null}
+
+          <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_220px]">
+            <div>
+              <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Why this matched</div>
+              <p className="mt-3 border-l border-[#12311d] pl-4 text-sm leading-7 text-[#66c485]">
+                <HighlightedText text={result.excerpt} query={query} />
               </p>
-              {result.tags.length ? (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {result.tags.slice(0, 4).map((tag) => (
-                    <span key={tag} className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#5faa73]">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-              <div className="mt-5 flex flex-wrap gap-3">
-                {result.document_slug ? (
-                  <Link href={`/app/library/${result.document_slug}`} className="text-sm text-[#4d8dff] hover:text-[#7aaaff]">
-                    Open page
-                  </Link>
-                ) : null}
-                {sectionHref ? (
-                  <Link href={sectionHref} className="text-sm text-[#4d8dff] hover:text-[#7aaaff]">
-                    Jump to section
-                  </Link>
-                ) : null}
-                {result.path_or_url ? (
-                  <a href={result.path_or_url} target="_blank" rel="noreferrer" className="text-sm text-[#4d8dff] hover:text-[#7aaaff]">
-                    Open source
-                  </a>
-                ) : null}
+            </div>
+
+            <div className="border border-[#12311d] bg-[#08110d] p-4">
+              <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Best entry point</div>
+              <div className="mt-3 text-sm font-medium text-[#7df2a6]">{result.section_title ?? "Overview"}</div>
+              <div className="mt-2 text-sm leading-6 text-[#66c485]">
+                Open the page or jump straight to the section where this match becomes useful.
               </div>
-            </article>
-          );
-        })}
+            </div>
+          </div>
+
+          {result.tags.length ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {result.tags.slice(0, 4).map((tag) => (
+                <span key={tag} className="rounded-full border border-[#12311d] px-3 py-1 text-xs text-[#5faa73]">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="mt-5 flex flex-wrap gap-4 text-sm">
+            {pageHref ? (
+              <Link href={pageHref} className="text-[#4d8dff] hover:text-[#7aaaff]">
+                Open page
+              </Link>
+            ) : null}
+            {sectionHref ? (
+              <Link href={sectionHref} className="text-[#4d8dff] hover:text-[#7aaaff]">
+                Jump to section
+              </Link>
+            ) : null}
+            {result.path_or_url ? (
+              <a href={result.path_or_url} target="_blank" rel="noreferrer" className="text-[#66c485] hover:text-[#7aaaff]">
+                Open original source
+              </a>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function SearchGuidance() {
+  return (
+    <div className="grid gap-4 lg:grid-cols-3">
+      <div className="border border-dashed border-[#12311d] bg-[#050b08] p-6 text-sm text-[#66c485]">
+        Search page titles when you know the concept or document name.
+      </div>
+      <div className="border border-dashed border-[#12311d] bg-[#050b08] p-6 text-sm text-[#66c485]">
+        Search section headings for implementation steps, commands, and formulas.
+      </div>
+      <div className="border border-dashed border-[#12311d] bg-[#050b08] p-6 text-sm text-[#66c485]">
+        Search exact phrases when you want a specific passage, API detail, or code pattern.
+      </div>
+    </div>
+  );
+}
+
+function SearchEmptyState({ query }: { query: string }) {
+  return (
+    <div className="border border-dashed border-[#12311d] bg-[#050b08] p-8">
+      <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">No result found</div>
+      <h2 className="mt-3 text-2xl font-semibold text-[#7df2a6]">Nothing matched “{query}” yet.</h2>
+      <p className="mt-3 max-w-3xl text-sm leading-7 text-[#66c485]">
+        Try a page title, a section heading, or a narrower technical phrase. Uintell search is strongest when the query
+        names the concept, command, file, or implementation detail you expect to read next.
+      </p>
+      <div className="mt-5 flex flex-wrap gap-4 text-sm">
+        <Link href="/app/library" className="text-[#4d8dff] hover:text-[#7aaaff]">
+          Browse library
+        </Link>
+        <Link href="/app/imports" className="text-[#4d8dff] hover:text-[#7aaaff]">
+          Import another source
+        </Link>
       </div>
     </div>
   );

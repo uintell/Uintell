@@ -239,7 +239,7 @@ a {
   .reader-prose blockquote,
   .reader-prose table,
   .reader-prose pre {
-    margin: 1rem 0 0;
+    margin: 1.1rem 0 0;
   }
 
   .reader-prose ul,
@@ -255,7 +255,7 @@ a {
   .reader-prose h2,
   .reader-prose h3,
   .reader-prose h4 {
-    margin: 2rem 0 0.9rem;
+    margin: 2.25rem 0 0.9rem;
     color: #7df2a6;
     font-family:
       ui-sans-serif,
@@ -266,7 +266,7 @@ a {
   }
 
   .reader-prose h1 {
-    font-size: 1.95rem;
+    font-size: 2rem;
   }
 
   .reader-prose h2 {
@@ -280,6 +280,10 @@ a {
   .reader-prose strong {
     color: #7df2a6;
     font-weight: 600;
+  }
+
+  .reader-prose p + p {
+    text-indent: 0.2rem;
   }
 
   .reader-prose hr {
@@ -330,6 +334,12 @@ a {
     font-size: 0.95rem;
   }
 
+  .reader-table-shell {
+    overflow-x: auto;
+    border: 1px solid #12311d;
+    background: #050b08;
+  }
+
   .reader-prose th,
   .reader-prose td {
     border: 1px solid #12311d;
@@ -361,6 +371,7 @@ a {
     overflow: hidden;
     border: 1px solid #12311d;
     background: #030806;
+    box-shadow: inset 0 1px 0 rgba(125, 242, 166, 0.03);
   }
 
   .reader-code-bar {

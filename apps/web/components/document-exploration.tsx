@@ -9,7 +9,7 @@ export function DocumentExploration({ document }: { document: DocumentDetail }) 
   }
 
   return (
-    <section className="border border-[#12311d] bg-[#050b08] p-6 lg:p-8">
+    <section id="continue-exploring" className="border border-[#12311d] bg-[#050b08] p-6 lg:p-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Continue exploring</div>
@@ -81,12 +81,40 @@ function ExplorationColumn({
               <div className="rounded-full border border-[#12311d] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#5faa73]">
                 {item.source_type}
               </div>
+              <div className="rounded-full border border-[#12311d] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#66c485]">
+                {item.source_name}
+              </div>
+              {item.relation_kind ? (
+                <div className="rounded-full border border-[#12311d] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#4d8dff]">
+                  {formatRelationKind(item.relation_kind)}
+                </div>
+              ) : null}
             </div>
             <div className="mt-3 text-base font-medium text-[#7df2a6]">{item.title}</div>
             {item.summary ? <div className="mt-2 text-sm leading-6 text-[#66c485]">{item.summary}</div> : null}
+            {item.relation_reason ? <div className="mt-3 text-sm leading-6 text-[#5faa73]">{item.relation_reason}</div> : null}
           </Link>
         ))}
       </div>
     </section>
   );
+}
+
+function formatRelationKind(value: string): string {
+  if (value === "same_source_shared_tags") {
+    return "Same source + tags";
+  }
+  if (value === "shared_tags") {
+    return "Shared tags";
+  }
+  if (value === "same_source") {
+    return "Same source";
+  }
+  if (value === "linked") {
+    return "Linked here";
+  }
+  if (value === "backlink") {
+    return "Backlink";
+  }
+  return value.replaceAll("_", " ");
 }

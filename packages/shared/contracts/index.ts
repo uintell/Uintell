@@ -35,6 +35,7 @@ export interface SearchResult {
   title: string;
   document_slug?: string | null;
   section_title?: string | null;
+  section_anchor?: string | null;
   source_type: string;
   source_name: string;
   document_kind?: string | null;
@@ -43,6 +44,7 @@ export interface SearchResult {
   path_or_url?: string | null;
   excerpt: string;
   score: number;
+  match_reasons: string[];
 }
 
 export interface SearchResponse {
@@ -102,7 +104,10 @@ export interface RelatedDocument {
   title: string;
   slug?: string | null;
   source_type: string;
+  source_name: string;
   summary?: string | null;
+  relation_kind?: string | null;
+  relation_reason?: string | null;
 }
 
 export interface DocumentDetail extends DocumentRecord {

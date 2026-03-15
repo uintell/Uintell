@@ -143,7 +143,7 @@ function SectionHeading({
       <Tag className={className}>{label}</Tag>
       {section.anchor ? (
         <a href={`#${section.anchor}`} className="text-xs uppercase tracking-[0.16em] text-[#4d8dff] hover:text-[#7aaaff]">
-          Link
+          Anchor
         </a>
       ) : null}
     </div>
@@ -164,6 +164,11 @@ function MarkdownBlock({ content }: { content: string }) {
             <a href={href} className="text-[#4d8dff] underline decoration-[#12311d] underline-offset-4 hover:text-[#7aaaff]">
               {children}
             </a>
+          ),
+          table: ({ children }: any) => (
+            <div className="reader-table-shell">
+              <table>{children}</table>
+            </div>
           ),
           code: ({ inline, children, ...props }: any) => {
             if (!inline) {

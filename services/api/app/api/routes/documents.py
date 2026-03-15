@@ -348,17 +348,23 @@ async def _build_connections(db: AsyncSession, document) -> DocumentConnectionsR
                 title=item.title,
                 slug=item.slug,
                 source_type=item.source_type,
+                source_name=item.source_name,
                 summary=item.summary,
+                relation_kind="backlink",
+                relation_reason="References this page elsewhere in the library.",
             )
             for item in backlinks
         ],
         related_documents=[
             RelatedDocumentResponse(
-                id=item.id,
-                title=item.title,
-                slug=item.slug,
-                source_type=item.source_type,
-                summary=item.summary,
+                id=item.document.id,
+                title=item.document.title,
+                slug=item.document.slug,
+                source_type=item.document.source_type,
+                source_name=item.document.source_name,
+                summary=item.document.summary,
+                relation_kind=item.relation_kind,
+                relation_reason=item.relation_reason,
             )
             for item in related
         ],

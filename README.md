@@ -13,6 +13,7 @@ The core loop is:
 - browse sources and open reader pages
 - search across the knowledge base
 - ask page-scoped questions and inspect the evidence behind the answer
+- follow related pages, backlinks, and section jumps without leaving the reader
 
 This repo is not being developed as a generic AI platform. The active product is the knowledge loop above.
 
@@ -120,6 +121,6 @@ The strongest product surface should be the article page:
 - read it comfortably
 - ask a narrow question
 - inspect citations and supporting passages
-- continue to related pages
+- continue to related pages and backlinks
 
 Everything else in the repo should support that flow or stay clearly optional/frozen.

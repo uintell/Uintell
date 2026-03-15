@@ -18,7 +18,10 @@ class RelatedDocumentResponse(BaseModel):
     title: str
     slug: str | None
     source_type: str
+    source_name: str
     summary: str | None = None
+    relation_kind: str | None = None
+    relation_reason: str | None = None
 
 
 class DocumentDetailResponse(BaseModel):

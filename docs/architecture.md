@@ -44,6 +44,13 @@ web (Next.js)
 - Search starts at `/v1/retrieval/search`.
 - Ask-page starts at `/v1/documents/{document_id}/answer`.
 
+## Product Quality Direction
+
+- search should tell the user why a page matched and where to jump inside it
+- the article page should be the calm center of the product
+- ask-page should stay page-scoped first and keep evidence visible
+- related pages and backlinks should help the user continue reading without leaving Uintell
+
 ## Optional Components
 
 These stay optional and should not be required for the main local flow:

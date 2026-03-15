@@ -31,6 +31,8 @@ The goal is not platform breadth. The goal is a clear, trustworthy knowledge eng
 - [x] improve the article page so it is the strongest product surface
 - [x] improve search result readability and section jumps
 - [x] make ask-page evidence and citations clearer
+- [x] make search explain why each result matched
+- [x] make related-page navigation show why a page is nearby
 - [x] document the live system in plain English
 - [x] rename the active system-state repository from `admin` to `system`
 - [x] add a developer entry-point doc for the core flow
@@ -38,6 +40,8 @@ The goal is not platform breadth. The goal is a clear, trustworthy knowledge eng
 ## Current Documentation Set
 
 - [system-map.md](system-map.md)
+- [google-plus-ten-standard.md](google-plus-ten-standard.md)
+- [core-loop-audit.md](core-loop-audit.md)
 - [data-model.md](data-model.md)
 - [code-map.md](code-map.md)
 - [core-flow.md](core-flow.md)
@@ -48,5 +52,6 @@ The goal is not platform breadth. The goal is a clear, trustworthy knowledge eng
 
 - import status is functional but still more operational than product-polished
 - related-page ranking is heuristic
+- semantic search quality depends on the health of the Qdrant index
 - backend compatibility routes still carry some older shape and naming
 - runtime clutter outside the active code paths still exists in the repo

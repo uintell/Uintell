@@ -62,6 +62,9 @@ export function DocumentReaderSidebar({
               <a href="#ask-this-page" className="block text-[#4d8dff] hover:text-[#7aaaff]">
                 Ask this page
               </a>
+              <a href="#continue-exploring" className="block text-[#4d8dff] hover:text-[#7aaaff]">
+                Continue exploring
+              </a>
               <Link
                 href={`/app/library/source/${encodeURIComponent(document.source_type)}/${encodeURIComponent(document.source_name)}`}
                 className="block text-[#4d8dff] hover:text-[#7aaaff]"

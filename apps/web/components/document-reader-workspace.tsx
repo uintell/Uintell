@@ -185,12 +185,33 @@ export function DocumentReaderWorkspace({ slug }: { slug: string }) {
             </div>
           ) : null}
 
+          <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+            <div className="border border-[#12311d] bg-[#08110d] p-4">
+              <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Reading focus</div>
+              <div className="mt-3 text-sm leading-7 text-[#66c485]">
+                Read the page first, then use the assistant to clarify claims with citations and supporting passages from
+                this page before the system broadens to the rest of the source.
+              </div>
+            </div>
+            <div className="border border-[#12311d] bg-[#08110d] p-4">
+              <div className="text-xs uppercase tracking-[0.18em] text-[#5faa73]">Knowledge context</div>
+              <div className="mt-3 grid gap-2 text-sm text-[#66c485]">
+                <div>{document.backlinks.length} backlinks into this page</div>
+                <div>{document.related_documents.length} nearby pages to read next</div>
+                <div>{document.sections.length || tocSections.length} reader sections available</div>
+              </div>
+            </div>
+          </div>
+
           <div className="mt-6 flex flex-wrap gap-4 text-sm">
             <Link href="/app/library" className="text-[#4d8dff] hover:text-[#7aaaff]">
               Back to library
             </Link>
             <a href="#ask-this-page" className="text-[#4d8dff] hover:text-[#7aaaff]">
               Ask this page
+            </a>
+            <a href="#continue-exploring" className="text-[#4d8dff] hover:text-[#7aaaff]">
+              Continue exploring
             </a>
             <Link
               href={`/app/library/source/${encodeURIComponent(document.source_type)}/${encodeURIComponent(document.source_name)}`}
@@ -210,7 +231,7 @@ export function DocumentReaderWorkspace({ slug }: { slug: string }) {
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-8">
           <article className="border border-[#12311d] bg-[#050b08] p-6 lg:p-10">
-            <div className="mx-auto w-full max-w-[74ch] space-y-10">
+            <div className="mx-auto w-full max-w-[76ch] space-y-10">
               {readerSections.length === 0 && document.plain_text ? (
                 <div className="reader-prose">
                   <p>{document.plain_text}</p>
