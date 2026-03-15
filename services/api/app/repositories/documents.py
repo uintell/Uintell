@@ -405,6 +405,8 @@ class DocumentRepository:
         return list(result.scalars().all())
 
     async def list_related(self, db: AsyncSession, *, document: Document, limit: int = 8) -> list[Document]:
+        # Related pages are intentionally heuristic for now: direct links and
+        # backlinks are strongest, then shared source/tags fill nearby reading.
         candidates: dict[UUID, tuple[int, Document]] = {}
 
         linked = (

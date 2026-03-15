@@ -63,6 +63,8 @@ class AnswerService:
         if document is None:
             raise ValueError("Document not found")
 
+        # The reader assistant is page-first by design. It widens to the rest of
+        # the source only when the current page does not yield enough evidence.
         page_hits = await self._retrieval.search(
             db,
             query=question,

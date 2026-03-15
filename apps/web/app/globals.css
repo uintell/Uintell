@@ -13,6 +13,10 @@ body {
   background: #08110d;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
   color: #f7faf8;
@@ -216,7 +220,7 @@ a {
       "Book Antiqua",
       Georgia,
       serif;
-    font-size: 1.05rem;
+    font-size: 1.08rem;
     line-height: 1.95;
     letter-spacing: 0.002em;
   }
@@ -262,15 +266,15 @@ a {
   }
 
   .reader-prose h1 {
-    font-size: 1.875rem;
+    font-size: 1.95rem;
   }
 
   .reader-prose h2 {
-    font-size: 1.5rem;
+    font-size: 1.58rem;
   }
 
   .reader-prose h3 {
-    font-size: 1.25rem;
+    font-size: 1.3rem;
   }
 
   .reader-prose strong {
@@ -288,6 +292,10 @@ a {
     border-left: 3px solid #12311d;
     padding-left: 1rem;
     color: #7df2a6;
+  }
+
+  .reader-prose a {
+    color: #4d8dff;
   }
 
   .reader-heading {
@@ -366,6 +374,24 @@ a {
     font-size: 0.72rem;
     letter-spacing: 0.18em;
     text-transform: uppercase;
+  }
+
+  .reader-code-copy {
+    border: 1px solid #12311d;
+    background: #050b08;
+    padding: 0.2rem 0.55rem;
+    color: #4d8dff;
+    font-size: 0.68rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    transition:
+      border-color 140ms ease,
+      color 140ms ease;
+  }
+
+  .reader-code-copy:hover {
+    border-color: #4d8dff;
+    color: #7aaaff;
   }
 
   .reader-code-shell {

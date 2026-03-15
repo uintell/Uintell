@@ -3,13 +3,20 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entities import AppSetting, AuditEvent, IngestionJob, JobStatus, ToolExecution
 
 
-class AdminRepository:
+class SystemRepository:
+    """Persistence for cross-cutting system state used by the active product flow.
+
+    This repository is intentionally narrow: ingestion jobs, app settings, audit
+    events, and tool executions all live here because they support the platform
+    around the knowledge flow rather than the normalized document graph itself.
+    """
+
     async def create_job(
         self,
         db: AsyncSession,

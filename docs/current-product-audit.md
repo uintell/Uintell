@@ -123,7 +123,7 @@ Optional behavior:
 
 ## Biggest Current Code Clarity Weaknesses
 
-- Some ingestion naming still comes from the older admin-oriented architecture, especially `AdminRepository`.
+- Some ingestion naming still reflects older architecture, although the active system-state boundary is now `SystemRepository`.
 - Active frontend screens still mix explicit palette classes with older token-based classes, which makes theme behavior harder to reason about.
 - The repo still contains frozen compatibility APIs and surfaces that are no longer part of the main product story.
 - There are now multiple audit/plan docs from adjacent sprints, which should be treated carefully so the current product story stays singular.

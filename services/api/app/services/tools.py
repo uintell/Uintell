@@ -5,8 +5,8 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.repositories.admin import AdminRepository
 from app.repositories.documents import DocumentRepository
+from app.repositories.system import SystemRepository
 from app.services.providers import ToolDefinition
 from app.services.retrieval import RetrievalService
 
@@ -17,11 +17,11 @@ class ToolRegistry:
         *,
         retrieval_service: RetrievalService,
         document_repository: DocumentRepository,
-        admin_repository: AdminRepository,
+        system_repository: SystemRepository,
     ) -> None:
         self._retrieval = retrieval_service
         self._documents = document_repository
-        self._admin = admin_repository
+        self._system = system_repository
 
     def definitions(self) -> list[ToolDefinition]:
         return [
@@ -95,7 +95,7 @@ class ToolRegistry:
                 }
             else:
                 raise ValueError(f"Unknown tool: {name}")
-            await self._admin.record_tool_execution(
+            await self._system.record_tool_execution(
                 db,
                 conversation_id=conversation_id,
                 tool_name=name,
@@ -105,7 +105,7 @@ class ToolRegistry:
             )
             return payload
         except Exception as exc:
-            await self._admin.record_tool_execution(
+            await self._system.record_tool_execution(
                 db,
                 conversation_id=conversation_id,
                 tool_name=name,

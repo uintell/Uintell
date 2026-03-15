@@ -16,9 +16,9 @@ from app.api.routes import auth, chat, collections, documents, health, imports, 
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.session import build_engine, build_session_factory
-from app.repositories.admin import AdminRepository
 from app.repositories.conversations import ConversationRepository
 from app.repositories.documents import DocumentRepository
+from app.repositories.system import SystemRepository
 from app.services.answers import AnswerService
 from app.services.chat import ChatService
 from app.services.container import ServiceContainer
@@ -104,7 +104,7 @@ async def lifespan(app: FastAPI):
     tool_registry = ToolRegistry(
         retrieval_service=retrieval,
         document_repository=DocumentRepository(),
-        admin_repository=AdminRepository(),
+        system_repository=SystemRepository(),
     )
     container = ServiceContainer(
         settings=settings,
@@ -138,12 +138,12 @@ async def lifespan(app: FastAPI):
         ingestion=IngestionService(
             session_factory=session_factory,
             document_repository=DocumentRepository(),
-            admin_repository=AdminRepository(),
+            system_repository=SystemRepository(),
             retrieval_service=retrieval,
             embedding_provider_name=embedding_provider_name,
             embedding_model_name=embedding_model_name,
         ),
-        app_settings=SettingsService(settings=settings, admin_repository=AdminRepository()),
+        app_settings=SettingsService(settings=settings, system_repository=SystemRepository()),
     )
     app.state.container = container
     logger.info(

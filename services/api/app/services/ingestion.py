@@ -8,8 +8,8 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.models.entities import Document, DocumentStatus, EmbeddingStatus, JobStatus
-from app.repositories.admin import AdminRepository
 from app.repositories.documents import DocumentRepository
+from app.repositories.system import SystemRepository
 from app.services.retrieval import RetrievalService
 from knowledge_engine import (
     chunk_document,
@@ -39,24 +39,24 @@ class IngestionService:
         *,
         session_factory: async_sessionmaker[AsyncSession],
         document_repository: DocumentRepository,
-        admin_repository: AdminRepository,
+        system_repository: SystemRepository,
         retrieval_service: RetrievalService,
         embedding_provider_name: str,
         embedding_model_name: str,
     ) -> None:
         self._session_factory = session_factory
         self._documents = document_repository
-        self._admin = admin_repository
+        self._system = system_repository
         self._retrieval = retrieval_service
         self._embedding_provider_name = embedding_provider_name
         self._embedding_model_name = embedding_model_name
 
     async def process_job(self, job_id: UUID) -> IngestionSummary:
         async with self._session_factory() as db:
-            job = await self._admin.get_job(db, job_id)
+            job = await self._system.get_job(db, job_id)
             if job is None:
                 raise ValueError(f"Job {job_id} not found")
-            await self._admin.update_job(db, job=job, status=JobStatus.RUNNING.value)
+            await self._system.update_job(db, job=job, status=JobStatus.RUNNING.value)
             await db.commit()
 
         try:
@@ -86,9 +86,9 @@ class IngestionService:
             else:
                 raise ValueError(f"Unsupported source type: {job.source_type}")
             async with self._session_factory() as db:
-                job = await self._admin.get_job(db, job_id)
+                job = await self._system.get_job(db, job_id)
                 if job is not None:
-                    await self._admin.update_job(
+                    await self._system.update_job(
                         db,
                         job=job,
                         status=JobStatus.SUCCEEDED.value,
@@ -98,9 +98,9 @@ class IngestionService:
             return summary
         except Exception as exc:
             async with self._session_factory() as db:
-                job = await self._admin.get_job(db, job_id)
+                job = await self._system.get_job(db, job_id)
                 if job is not None:
-                    await self._admin.update_job(
+                    await self._system.update_job(
                         db,
                         job=job,
                         status=JobStatus.FAILED.value,
@@ -158,13 +158,13 @@ class IngestionService:
                 except Exception:
                     summary.failed += 1
                 if summary.processed % 10 == 0:
-                    job = await self._admin.get_job(db, job_id)
+                    job = await self._system.get_job(db, job_id)
                     if job is not None:
-                        await self._admin.update_job(db, job=job, progress=summary.to_progress())
+                        await self._system.update_job(db, job=job, progress=summary.to_progress())
                     await db.commit()
-            job = await self._admin.get_job(db, job_id)
+            job = await self._system.get_job(db, job_id)
             if job is not None:
-                await self._admin.update_job(db, job=job, progress=summary.to_progress())
+                await self._system.update_job(db, job=job, progress=summary.to_progress())
             await db.commit()
         return summary
 
@@ -175,6 +175,8 @@ class IngestionService:
         *,
         overrides: dict | None = None,
     ) -> bool:
+        # Every importer feeds the same normalization path: parsed document ->
+        # canonical document row -> chunk rows -> vector/index refresh.
         parsed_document = _apply_document_overrides(parsed_document, overrides)
         full_text = parsed_document.full_text or parsed_document.article_title
         document, changed = await self._documents.upsert_document(

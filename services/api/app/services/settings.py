@@ -6,13 +6,13 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
-from app.repositories.admin import AdminRepository
+from app.repositories.system import SystemRepository
 
 
 class SettingsService:
-    def __init__(self, *, settings: Settings, admin_repository: AdminRepository) -> None:
+    def __init__(self, *, settings: Settings, system_repository: SystemRepository) -> None:
         self._settings = settings
-        self._admin = admin_repository
+        self._system = system_repository
 
     async def get_values(self, db: AsyncSession) -> dict[str, dict]:
         generation_model = self._settings.ollama_model if self._settings.generation_provider == "ollama" else self._settings.openai_model
@@ -37,12 +37,12 @@ class SettingsService:
             "rag": {"top_k": self._settings.rag_top_k, "context_char_limit": self._settings.rag_context_char_limit},
             "sources": {"profiles": self._default_source_profiles()},
         }
-        stored = await self._admin.get_settings(db)
+        stored = await self._system.get_settings(db)
         defaults.update(stored)
         return defaults
 
     async def update_values(self, db: AsyncSession, *, values: dict[str, dict], updated_by_user_id: UUID | None) -> None:
-        await self._admin.upsert_settings(db, values=values, updated_by_user_id=updated_by_user_id)
+        await self._system.upsert_settings(db, values=values, updated_by_user_id=updated_by_user_id)
 
     async def get_source_profiles(self, db: AsyncSession) -> list[dict[str, Any]]:
         values = await self.get_values(db)

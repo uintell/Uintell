@@ -120,6 +120,8 @@ class RetrievalService:
         tags: Sequence[str] | None,
         limit: int,
     ) -> list[RetrievedChunk]:
+        # Retrieval stays on one path: exact PostgreSQL search plus semantic
+        # Qdrant search, then merge back onto authoritative Postgres rows.
         semantic_hits: list[tuple[str, float]] = []
         semantic_limit = limit * 2
         if source_names and not document_ids:
@@ -241,6 +243,8 @@ def _rerank_chunks(
     diversify: bool,
     limit: int,
 ) -> list[RetrievedChunk]:
+    # Bias toward the document/page entry points a reader expects first: title
+    # matches, then section matches, then chunk content, then semantic score.
     normalized_query = _normalize_text(query)
     query_terms = _query_terms(query)
     ranked: list[tuple[float, int, RetrievedChunk]] = []

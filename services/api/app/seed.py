@@ -5,8 +5,8 @@ import asyncio
 from app.core.config import get_settings
 from app.db.session import build_engine, build_session_factory
 from app.models.entities import UserRole
-from app.repositories.admin import AdminRepository
 from app.repositories.auth import AuthRepository
+from app.repositories.system import SystemRepository
 from app.services.security import SecurityService
 from app.services.settings import SettingsService
 
@@ -36,7 +36,7 @@ async def main() -> None:
                 role=UserRole.ADMIN.value,
             )
 
-        app_settings = SettingsService(settings=settings, admin_repository=AdminRepository())
+        app_settings = SettingsService(settings=settings, system_repository=SystemRepository())
         default_values = await app_settings.get_values(db)
         await app_settings.update_values(
             db,

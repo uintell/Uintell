@@ -9,8 +9,8 @@ from temporalio.worker import Worker
 
 from app.core.config import get_settings
 from app.db.session import build_engine, build_session_factory
-from app.repositories.admin import AdminRepository
 from app.repositories.documents import DocumentRepository
+from app.repositories.system import SystemRepository
 from app.services.ingestion import IngestionService
 from app.services.meilisearch import MeiliSearchService
 from app.services.retrieval import RetrievalService
@@ -73,7 +73,7 @@ async def main() -> None:
     ingestion = IngestionService(
         session_factory=session_factory,
         document_repository=DocumentRepository(),
-        admin_repository=AdminRepository(),
+        system_repository=SystemRepository(),
         retrieval_service=retrieval,
         embedding_provider_name=embedding_provider_name,
         embedding_model_name=embedding_model_name,

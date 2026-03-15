@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_container, get_db, require_user
-from app.repositories.admin import AdminRepository
 from app.repositories.documents import DocumentRepository
+from app.repositories.system import SystemRepository
 from app.schemas.documents import (
     DocumentListResponse,
     DocumentResponse,
@@ -218,8 +218,8 @@ async def upload_document(
         storage_key=stored.uri,
         metadata={"content_type": file.content_type or "application/octet-stream"},
     )
-    admin = AdminRepository()
-    job = await admin.create_job(
+    system = SystemRepository()
+    job = await system.create_job(
         db,
         source_type="filesystem",
         source_name="local_uploads",

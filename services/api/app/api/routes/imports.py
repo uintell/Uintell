@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_container, get_db, require_admin
-from app.repositories.admin import AdminRepository
 from app.repositories.documents import DocumentRepository
+from app.repositories.system import SystemRepository
 from app.schemas.documents import IngestSourceRequest, IngestionJobResponse
 from app.services.container import ServiceContainer
 
@@ -19,7 +19,7 @@ async def list_jobs(
     user=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[IngestionJobResponse]:
-    jobs = await AdminRepository().list_jobs(db)
+    jobs = await SystemRepository().list_jobs(db)
     return [IngestionJobResponse.model_validate(job, from_attributes=True) for job in jobs]
 
 
@@ -74,8 +74,8 @@ async def ingest_source(
     if source_type == "filesystem" and document_kind in {"book", "note"}:
         override_source_type = document_kind
 
-    admin = AdminRepository()
-    job = await admin.create_job(
+    system = SystemRepository()
+    job = await system.create_job(
         db,
         source_type=source_type,
         source_name=source_name,
@@ -109,9 +109,9 @@ async def ingest_source(
             task_queue=container.settings.temporal_task_queue,
         )
         async with container.session_factory() as inner_db:
-            fresh_job = await admin.get_job(inner_db, job.id)
+            fresh_job = await system.get_job(inner_db, job.id)
             if fresh_job is not None:
-                await admin.update_job(inner_db, job=fresh_job, workflow_id=handle.id)
+                await system.update_job(inner_db, job=fresh_job, workflow_id=handle.id)
                 await inner_db.commit()
     else:
         asyncio.create_task(container.ingestion.process_job(job.id))
